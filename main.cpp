@@ -1,56 +1,45 @@
 #include <iostream>
 
-const int kMaxLenght = 2e5 + 1;
-
-int number_count;
-int query_count;
-
-int left_bound;
-int right_bound;
-int target;
-
-bool answer;
-
-int numbers[kMaxLenght];
-
 bool BinarySearch(const int* begin, const int* end, int target) {
-  int middle;
-  int left_bound = *begin;
-  int right_bound = *end;
+  const int* middle;
 
-  while (right_bound - left_bound > 1) {
-    middle = (left_bound + right_bound) / 2;
-
-    if (numbers[middle] <= target) {
-      left_bound = middle;
+  while (end - begin > 1) {
+    middle = begin + (end - begin) / 2;
+    if (*middle <= target) {
+      begin = middle;
     } else {
-      right_bound = middle;
+      end = middle;
     }
   }
 
-  return numbers[left_bound] == target;
+  return *begin == target;
 }
 
 int main() {
-  std::cin >> number_count;
+  size_t numbers_count;
+  size_t query_count;
 
-  for (int i = 0; i < number_count; ++i) {
+  size_t left;
+  size_t right;
+  int target;
+
+  std::cin >> numbers_count;
+  int* numbers = new int[numbers_count];
+  for (size_t i = 0; i < numbers_count; ++i) {
     std::cin >> numbers[i];
   }
 
   std::cin >> query_count;
 
-  for (int i = 0; i < query_count; ++i) {
-    std::cin >> left_bound >> right_bound >> target;
-
-    answer = BinarySearch(&left_bound, &right_bound, target);
-
-    if (answer) {
+  for (size_t i = 0; i < query_count; ++i) {
+    std::cin >> left >> right >> target;
+    if (BinarySearch(numbers + left - 1, numbers + right - 1, target)) {
       std::cout << "YES\n";
     } else {
       std::cout << "NO\n";
     }
   }
 
+  delete[] numbers;
   return 0;
 }
