@@ -168,7 +168,7 @@ struct Deque {
   }
 };
 
-void CheckValue(int value) {
+void CheckValue(const int value) {
   if (value == kInf || value == -kInf) {
     std::cout << "error";
   } else {
@@ -217,21 +217,20 @@ void ExecuteCommand(const std::string* command, Deque* deque) {
 }
 
 int main() {
-  int commands_count;
+  size_t commands_count;
   std::string command;
 
   Deque* deque = new Deque();
 
   std::cin >> commands_count;
 
-  for (int i = 0; i < commands_count; ++i) {
+  for (size_t i = 0; i < commands_count; ++i) {
     std::cin >> command;
     ExecuteCommand(&command, deque);
   }
 
   deque->Clear();
   delete deque;
-
   return 0;
 }
 
