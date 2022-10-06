@@ -33,7 +33,7 @@ int main() {
 
   for (size_t i = 0; i < query_count; ++i) {
     std::cin >> left >> right >> target;
-    if (BinarySearch(numbers + left - 1, numbers + right - 1, target)) {
+    if (BinarySearch(numbers + left, numbers + right, target)) {
       std::cout << "YES\n";
     } else {
       std::cout << "NO\n";
