@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+main
+
+# VS Code files
+*.json
+*.txt
+Footer

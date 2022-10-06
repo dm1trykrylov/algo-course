@@ -1,12 +1,6 @@
 #include <iostream>
 
-using namespace std;
-
 const int kInf = 2e9;
-int number_count;
-int number;
-int min_number = kInf;
-int min_number_index = 0;
 
 bool UpdateMinNumber(int* min_number, const int* new_number) {
   bool is_updated = false;
@@ -18,6 +12,11 @@ bool UpdateMinNumber(int* min_number, const int* new_number) {
 }
 
 int main() {
+  int number_count;
+  int number;
+  int min_number = kInf;
+  int min_number_index = 0;
+
   std::cin >> number_count;
 
   for (int i = 0; i < number_count; ++i) {
@@ -28,6 +27,5 @@ int main() {
   }
 
   std::cout << min_number_index;
-
   return 0;
 }
