@@ -2,8 +2,8 @@
 #include <iostream>
 #include <vector>
 
-const uint64_t kByte = 255;
-const size_t kMaxBytes = 8;
+const uint64_t kByte = 255;  // 11111111 in binary
+const size_t kMaxBytes = 8;  // bytes in number
 
 uint64_t GetByte(uint64_t number, size_t byte_idx) {
   size_t offset = byte_idx * 8;
@@ -23,7 +23,7 @@ void LSDsort(size_t n, std::vector<uint64_t>& array) {
       ++bytes_count[GetByte(number, byte_idx)];
     }
     count = 0;
-    for (size_t i = 0; i <= kByte; ++i) {
+    for (size_t i = 0; i <= kByte; ++i) {  // write to bytes_count prefix sums
       tmp = bytes_count[i];
       bytes_count[i] = count;
       count += tmp;
