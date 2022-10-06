@@ -26,16 +26,17 @@ int main() {
   plants[0] = 1.0;
 
   for (int i = 1; i <= plants_count; ++i) {
-    std::cin >> plants[i];
-    plants[i] = powl(plants[i], 1.0 / ((double)plants_count));
+    std::cin >>
+        plants[i];  // raising plants[i] to the power of 1.0/plants_count
+    plants[i] =
+        powl(plants[i],
+             1.0 / ((double)plants_count));  // helps avoid double overflow
     plants[i] *= plants[i - 1];
   }
 
   std::cin >> queries_count;
-
   ProcessQueries(&queries_count, &plants_count, plants);
 
   delete[] plants;
   return 0;
 }
-
