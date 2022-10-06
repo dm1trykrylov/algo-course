@@ -168,11 +168,11 @@ struct Deque {
   }
 };
 
-void CheckValue(const int value) {
-  if (value == kInf || value == -kInf) {
+void CheckValue(const int kValue) {
+  if (kValue == kInf || kValue == -kInf) {
     std::cout << "error";
   } else {
-    std::cout << value;
+    std::cout << kValue;
   }
 }
 
