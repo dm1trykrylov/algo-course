@@ -12,14 +12,14 @@ bool UpdateMinNumber(int* min_number, const int* new_number) {
 }
 
 int main() {
-  int number_count;
+  size_t number_count;
   int number;
   int min_number = kInf;
   int min_number_index = 0;
 
   std::cin >> number_count;
 
-  for (int i = 0; i < number_count; ++i) {
+  for (size_t i = 0; i < number_count; ++i) {
     std::cin >> number;
     if (UpdateMinNumber(&min_number, &number)) {
       min_number_index = i;
