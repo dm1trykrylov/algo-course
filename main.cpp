@@ -183,10 +183,6 @@ struct Deque {
   }
 };
 
-bool CheckValue(const std::optional<int> kValue) {
-  return (kValue == kInf || kValue == -kInf);
-}
-
 std::string GetValue(const std::optional<int> kValue) {
   if (kValue.has_value()) {
     return std::to_string(kValue.value());
