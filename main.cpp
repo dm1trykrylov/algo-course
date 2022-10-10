@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <iostream>
+#include <optional>
 #include <string>
 
 const int kInf = 1e9 + 2;
+const std::string kError = "error";
 
 struct Node {
   int min;
@@ -53,20 +55,18 @@ struct Stack {
     }
   }
 
-  int Back() {
-    int back = -kInf;
-    if (top != NULL) {
-      back = top->val;
+  std::optional<int> Back() {
+    if (top == NULL) {
+      return std::nullopt;
     }
-    return back;
+    return top->val;
   }
 
-  int Min() {
-    int min_value = kInf;
-    if (top != NULL) {
-      min_value = top->min;
+  std::optional<int> Min() {
+    if (top == NULL) {
+      return std::nullopt;
     }
-    return min_value;
+    return top->min;
   }
 
   int Size() { return this->size; }
@@ -111,9 +111,11 @@ struct Deque {
   }
 
   void Shift(Stack* from, Stack* to) {
-    while (!from->IsEmpty()) {
-      to->Push((from->Back()));
+    std::optional<int> back = from->Back();
+    while (back.has_value()) {
+      to->Push(back.value());
       from->Pop();
+      back = from->Back();
     }
   }
 
@@ -122,36 +124,49 @@ struct Deque {
   bool IsEmpty() { return this->Size() == 0; }
 
   // return oldest element
-  int Back() {
-    int back_value = 0;
+  std::optional<int> Back() {
     if (this->IsEmpty()) {
-      back_value = -kInf;
+      return std::nullopt;
+    }
+    int back_value;
+    if (this->back->IsEmpty()) {
+      back_value = this->front->root->val;
     } else {
-      if (this->back->IsEmpty()) {
-        back_value = this->front->root->val;
-      } else {
-        back_value = this->back->top->val;
-      }
+      back_value = this->back->top->val;
     }
     return back_value;
   }
 
   // return newest element
-  int Front() {
-    int front_value = 0;
+  std::optional<int> Front() {
     if (this->IsEmpty()) {
-      front_value = -kInf;
+      return std::nullopt;
+    }
+    int front_value;
+    if (this->back->IsEmpty()) {
+      front_value = this->front->root->val;
     } else {
-      if (this->back->IsEmpty()) {
-        front_value = this->front->root->val;
-      } else {
-        front_value = this->back->top->val;
-      }
+      front_value = this->back->top->val;
     }
     return front_value;
   }
 
-  int Min() { return std::min(front->Min(), back->Min()); }
+  std::optional<int> Min() {
+    std::optional<int> front_min = front->Min();
+    std::optional<int> back_min = back->Min();
+    std::optional<int> min_value;
+    if (front_min.has_value()) {
+      min_value = front_min;
+    }
+    if (back_min.has_value()) {
+      if (min_value.has_value()) {
+        min_value = std::min(min_value, back_min);
+      } else {
+        min_value = back_min;
+      }
+    }
+    return min_value;
+  }
 
   void Clear() {
     if (front != NULL) {
@@ -168,49 +183,50 @@ struct Deque {
   }
 };
 
-void CheckValue(const int kValue) {
-  if (kValue == kInf || kValue == -kInf) {
-    std::cout << "error";
-  } else {
-    std::cout << kValue;
-  }
+bool CheckValue(const std::optional<int> kValue) {
+  return (kValue == kInf || kValue == -kInf);
 }
 
-void PopBack(Deque* deque) {
-  if (deque->IsEmpty()) {
-    std::cout << "error";
-  } else {
-    std::cout << deque->Back();
+std::string GetValue(const std::optional<int> kValue) {
+  if (kValue.has_value()) {
+    return std::to_string(kValue.value());
+  }
+  return kError;
+}
+
+std::optional<int> PopBack(Deque* deque) {
+  auto back = deque->Back();
+  if (back.has_value()) {
     deque->PopBack();
   }
+  return back;
 }
 
-void PopFront(Deque* deque) {
-  if (deque->IsEmpty()) {
-    std::cout << "error";
-  } else {
-    std::cout << deque->Front();
+std::optional<int> PopFront(Deque* deque) {
+  auto front = deque->Front();
+  if (front.has_value()) {
     deque->PopFront();
   }
+  return front;
 }
 
 void ExecuteCommand(const std::string* command, Deque* deque) {
   int value;
-
   if (*command == "enqueue") {
     std::cin >> value;
     deque->PushFront(value);
     std::cout << "ok";
   } else if (*command == "dequeue") {
-    PopBack(deque);
+    std::cout << GetValue(PopBack(deque));
   } else if (*command == "front") {
-    CheckValue(deque->Back());
+    std::cout << GetValue(deque->Back());
   } else if (*command == "min") {
-    CheckValue(deque->Min());
+    std::cout << GetValue(deque->Min());
   } else if (*command == "size") {
     std::cout << deque->Size();
   } else if (*command == "clear") {
     deque->Clear();
+
     std::cout << "ok";
   }
   std::cout << '\n';
