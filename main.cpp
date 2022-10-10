@@ -2,10 +2,10 @@
 #include <iomanip>
 #include <iostream>
 
-void ProcessQueries(int* queries_count, const int* plants_count,
+void ProcessQueries(size_t* queries_count, const size_t* plants_count,
                     const double* plants) {
-  int left_bound;
-  int right_bound;
+  size_t left_bound;
+  size_t right_bound;
   double mean_value;
   while (*queries_count > 0) {
     std::cin >> left_bound >> right_bound;
@@ -18,14 +18,14 @@ void ProcessQueries(int* queries_count, const int* plants_count,
 }
 
 int main() {
-  int plants_count;
-  int queries_count;
+  size_t plants_count;
+  size_t queries_count;
   std::cin >> plants_count;
 
   double* plants = new double[plants_count + 1];
   plants[0] = 1.0;
 
-  for (int i = 1; i <= plants_count; ++i) {
+  for (size_t i = 1; i <= plants_count; ++i) {
     std::cin >>
         plants[i];  // raising plants[i] to the power of 1.0/plants_count
     plants[i] =
