@@ -2,9 +2,8 @@
 #include <iterator>
 #include <random>
 #include <vector>
-// <iterator> library is necessary for <bits/stl_algo.h>
+//
 #include <bits/stl_algo.h>
-// here function shuffle() is defined
 
 template <typename T>
 size_t Partition(T& array, size_t left, size_t right) {
@@ -43,26 +42,37 @@ void Qsort(T& a, size_t size) {
   Qsort(a, 0, size - 1);
 }
 
-int main() {
+void ReadInput(size_t& size, std::vector<int>& array) {
   std::ios::sync_with_stdio(false);
   std::cin.tie(nullptr);
   std::cout.tie(nullptr);
-  size_t size;
+
   std::cin >> size;
-  std::vector<int> array(size);
+  array.resize(size);
+
   for (size_t i = 0; i < size; ++i) {
     std::cin >> array[i];
   }
+}
 
-  auto rng = std::default_random_engine{};
-  std::shuffle(array.begin(), array.end(),
-               rng);  // shuffle array to avoid bad cases
+void PrintArray(const std::vector<int>& k_array) {
+  for (auto a : k_array) {
+    std::cout << a << ' ';
+  }
+}
+
+int main() {
+  size_t size;
+  std::vector<int> array;
+  ReadInput(size, array);
+
+  std::shuffle(
+      array.begin(), array.end(),
+      std::default_random_engine{});  // shuffle array to avoid bad cases
 
   Qsort(array, size);
 
-  for (size_t i = 0; i < size; ++i) {
-    std::cout << array[i] << ' ';
-  }
+  PrintArray(array);
 
   return 0;
 }
