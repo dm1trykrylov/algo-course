@@ -1,15 +1,14 @@
-#include <algorithm>
 #include <iostream>
 #include <vector>
 
-namespace constants {
+namespace Constants {
 const uint64_t kByte = 255;  // 11111111 in binary
 const size_t kMaxBytes = 8;  // bytes in number
-};                           // namespace constants
+}  // namespace Constants
 
 uint64_t GetByte(uint64_t number, size_t byte_idx) {
   size_t offset = byte_idx * 8;
-  uint64_t tmp = constants::kByte << offset;
+  uint64_t tmp = Constants::kByte << offset;
   tmp = number & tmp;
   tmp >>= offset;
   return tmp;
@@ -17,13 +16,13 @@ uint64_t GetByte(uint64_t number, size_t byte_idx) {
 
 void CountingSort(size_t n, size_t byte_idx, std::vector<uint64_t>& result,
                   std::vector<uint64_t>& array) {
-  std::vector<uint64_t> bytes_count(constants::kByte + 1);
+  std::vector<uint64_t> bytes_count(Constants::kByte + 1);
   for (auto& number : array) {
     ++bytes_count[GetByte(number, byte_idx)];
   }
 
   uint64_t count = 0;
-  for (size_t i = 0; i <= constants::kByte;
+  for (size_t i = 0; i <= Constants::kByte;
        ++i) {  // write to bytes_count prefix sums
     uint64_t tmp = bytes_count[i];
     bytes_count[i] = count;
@@ -40,7 +39,7 @@ void CountingSort(size_t n, size_t byte_idx, std::vector<uint64_t>& result,
 void LSDsort(size_t n, std::vector<uint64_t>& array) {
   std::vector<uint64_t> result(array.size());
 
-  for (size_t byte_idx = 0; byte_idx < constants::kMaxBytes; ++byte_idx) {
+  for (size_t byte_idx = 0; byte_idx < Constants::kMaxBytes; ++byte_idx) {
     CountingSort(n, byte_idx, result, array);
 
     for (size_t i = 0; i < n; ++i) {
@@ -63,8 +62,8 @@ void ReadInput(size_t& n, std::vector<uint64_t>& array) {
   }
 }
 
-void PrintArray(const std::vector<uint64_t>& kArray) {
-  for (auto a : kArray) {
+void PrintArray(const std::vector<uint64_t>& k_array) {
+  for (auto a : k_array) {
     std::cout << a << '\n';
   }
 }
