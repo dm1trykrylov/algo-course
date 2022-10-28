@@ -3,264 +3,258 @@
 #include <string>
 
 template <typename T, typename V>
-class Node {
- public:
-  Node(const T& key, const V& value, Node* left, Node* right, Node* parent)
-      : key(key), value(value), left(left), right(right), parent(parent){};
-  ~Node();
-
-  T key;
-  V value;
-  Node* left;
-  Node* right;
-  Node* parent;
-};
-
-template <typename T, typename V>
 class SplayTree {
+ private:
+  class Node {
+   public:
+    Node(const T& key, const V& value, Node* left, Node* right, Node* parent)
+        : key(key), value(value), left(left), right(right), parent(parent) {}
+    T key;
+    V value;
+    Node* left;
+    Node* right;
+    Node* parent;
+  };
+  
  public:
-  SplayTree() { root_ = nullptr; }
-
-  V& operator[](T key);
-
-  Node<T, V>* Merge(Node<T, V>* l, Node<T, V>* r);
-
-  std::pair<Node<T, V>*, Node<T, V>*> Split(Node<T, V>* node, T key);
-
-  void Insert(T key, const V& value);
-  void Erase(T key);
-
-  void PostOrder(Node<T, V>* v,
-                 const std::function<void(Node<T, V>*)>& callback);
+  SplayTree() : root_(nullptr), new_node_(nullptr) {}
 
   ~SplayTree() {
-    PostOrder(root_, [](Node<T, V>* v) { delete v; });
+    PostOrder(root_, [](Node* v) { delete v; });
+  }
+
+  void PostOrder(Node* v, const std::function<void(Node*)>& callback) {
+    if (v == nullptr) {
+      return;
+    }
+    PostOrder(v->left, callback);
+    PostOrder(v->right, callback);
+    callback(v);
+  }
+
+  std::pair<Node*, Node*> Split(Node* v, T key) {
+    if (v == nullptr) {
+      return std::make_pair(nullptr, nullptr);
+    }
+
+    auto lb = LowerBound(v, key, nullptr);
+    if (lb == nullptr) {
+      lb = Max(root_);
+    }
+    Splay(lb);
+    root_ = lb;
+    Node* left;
+    Node* right;
+    if (root_->key >= key) {
+      left = root_->left;
+      if (left != nullptr) {
+        root_->left = nullptr;
+        left->parent = nullptr;
+      }
+      right = root_;
+    } else {
+      right = root_->right;
+      if (right != nullptr) {
+        root_->right = nullptr;
+        right->parent = nullptr;
+      }
+      left = root_;
+    }
+
+    return std::make_pair(left, right);
+  }
+
+  Node* Merge(Node* l, Node* r) {
+    if (l == nullptr) {
+      return r;
+    }
+    if (r == nullptr) {
+      return l;
+    }
+    Node* m = Max(l);
+    Splay(m);
+    m->right = r;
+    r->parent = m;
+    return m;
+  }
+
+  void Insert(T x, const V& value) {
+    if (root_ == nullptr) {
+      root_ = new Node(x, value, nullptr, nullptr, nullptr);
+    } else {
+      InsertInTree(x, value);
+    }
+  }
+
+  void Erase(T key) {
+    Node* v = Find(root_, key);
+    Splay(v);
+    if (v->left != nullptr) {
+      v->left->parent = nullptr;
+    }
+    if (v->right != nullptr) {
+      v->right->parent = nullptr;
+    }
+    Node* tree = Merge(v->left, v->right);
+    delete v;
+    root_ = tree;
+    tree->parent = nullptr;
+  }
+
+  V& operator[](T key) {
+    Node* v = Find(root_, key);
+    Splay(v);
+    root_ = v;
+    return v->value;
   }
 
  private:
-  Node<T, V>* root_;
-  Node<T, V>* p(Node<T, V>* node) { return node->parent; }
-
-  Node<T, V>* g(Node<T, V>* node) { return node->parent->parent; }
-
-  Node<T, V>* Max(Node<T, V>* node);
-
-  void RotateLeft(Node<T, V>* node);
-
-  void RotateRight(Node<T, V>* node);
-
-  void Splay(Node<T, V>* node);
-
-  void Insert(T key, const V& value, Node<T, V>* node);
-
-  Node<T, V>* Find(Node<T, V>* st_node, T key);
-};
-
-template <typename T, typename V>
-V& SplayTree<T, V>::operator[](T key) {
-  Node<T, V>* node = Find(key);
-  Splay(node);
-  // root_ = node;
-  return node->value;
-}
-
-template <typename T, typename V>
-Node<T, V>* SplayTree<T, V>::Merge(Node<T, V>* l, Node<T, V>* r) {
-  if (l == nullptr) {
-    return r;
+  void InsertInTree(T key, const V& value) {
+    auto trees = Split(root_, key);
+    new_node_ = new Node(key, value, nullptr, nullptr, nullptr);
+    root_ = Merge(Merge(trees.first, new_node_), trees.second);
+    // delete node;
   }
-  if (r == nullptr) {
-    return l;
-  }
-  Node<T, V>* m = Max(l);
-  Splay(m);
-  m->right = r;
-  r->parent = m;
-  return m;
-}
 
-template <typename T, typename V>
-std::pair<Node<T, V>*, Node<T, V>*> Split(typename SplayTree<T, V>::Node* node,
-                                          T key) {
-  if (node == nullptr) {
-    return std::make_pair(nullptr, nullptr);
-  }
-  Node<T, V>* left;
-  Node<T, V>* right;
-  if (node->key > key) {
-    auto t = split(node->left, key);
-    node->left = t.second;
-    if (t.second != nullptr) {
-      p(t.second) = node;
+  Node* Max(Node* v) {
+    if (v->right == nullptr) {
+      return v;
     }
-    left = t.first;
-    right = node;
-  } else {
-    auto t = split(node->right, key);
-    node->right = t.first;
-    if (t.first != nullptr) {
-      p(t.first) = node;
+    return Max(v->right);
+  }
+
+  Node* Find(Node* v, T key) {
+    while (v->key != key) {
+      if (v->key > key) {
+        v = v->left;
+      } else {
+        v = v->right;
+      }
     }
-    right = t.second;
-    left = node;
+    return v;
   }
-  return std::make_pair(left, right);
-}
 
-template <typename T, typename V>
-void SplayTree<T, V>::Insert(T key, const V& value) {
-  if (root_ == nullptr) {
-    root_ = new Node<T, V>(key, value, nullptr, nullptr, nullptr);
-  } else {
-    Insert(key, value, root_);
-  }
-}
+  Node* LowerBound(Node* v, T key, Node* node) {
+    auto t = v;
 
-template <typename T, typename V>
-void SplayTree<T, V>::Erase(T key) {
-  Node<T, V>* node = Find(root_, key);
-  Splay(node);
-  if (node->left != nullptr) {
-    node->left->parent = nullptr;
-  }
-  if (node->right != nullptr) {
-    node->right->parent = nullptr;
-  }
-  Node<T, V>* new_root = Merge(node->left, node->right);
-  new_root->parent = nullptr;
-  root_ = new_root;
-  delete node;
-}
-
-template <typename T, typename V>
-void SplayTree<T, V>::PostOrder(
-    Node<T, V>* v, const std::function<void(Node<T, V>*)>& callback) {
-  if (v == nullptr) {
-    return;
-  }
-  PostOrder(v->left, callback);
-  PostOrder(v->right, callback);
-  callback(v);
-}
-
-template <typename T, typename V>
-Node<T, V>* SplayTree<T, V>::Max(Node<T, V>* node) {
-  if (node->right == nullptr) {
+    while (t != nullptr) {
+      if (t->key == key) {
+        return t;
+      }
+      if (t->key > key) {
+        node = t;
+        t = t->left;
+      } else {
+        t = t->right;
+      }
+    }
     return node;
-  } else {
-    return Max(node->right);
   }
-}
 
-template <typename T, typename V>
-void SplayTree<T, V>::RotateLeft(Node<T, V>* node) {
-  Node<T, V>* p = this->p(node);
-  Node<T, V>* r = node->right;
+  void RotateLeft(Node* v) {
+    Node* p = v->parent;
+    Node* r = v->right;
+    if (p != nullptr) {
+      (p->left == v ? p->left : p->right) = r;
+    }
+    if (r != nullptr) {
+      Node* tmp = r->left;
+      r->left = v;
+      v->right = tmp;
 
-  if (p != nullptr) {
-    (p->left == node ? p->left : p->right) = r;
+      r->parent = p;
+
+      v->parent = r;
+    }
+
+    if (v->right != nullptr) {
+      v->right->parent = v;
+    }
   }
-  Node<T, V>* tmp = r->left;
-  r->left = node;
-  node->right = tmp;
-  node->parent = r;
-  r->parent = p;
-  if (node->right != nullptr) {
-    node->right->parent = node;
-  }
-}
 
-template <typename T, typename V>
-void SplayTree<T, V>::RotateRight(Node<T, V>* node) {
-  Node<T, V>* p = this->p(node);
-  Node<T, V>* l = node->left;
+  void RotateRight(Node* v) {
+    Node* p = v->parent;
+    Node* l = v->left;
+    if (p != nullptr) {
+      (p->right == v ? p->right : p->left) = l;
+    }
+    if (l != nullptr) {
+      Node* tmp = l->right;
+      l->right = v;
+      v->left = tmp;
 
-  if (p != nullptr) {
-    (p->right == node ? p->right : p->left) = l;
-  }
-  Node<T, V>* tmp = l->right;
-  l->right = node;
-  node->left = tmp;
-  node->parent = l;
-  l->parent = p;
-  if (node->left != nullptr) {
-    node->left->parent = node;
-  }
-}
+      l->parent = p;
+      v->parent = l;
+    }
 
-template <typename T, typename V>
-void SplayTree<T, V>::Splay(Node<T, V>* node) {
-  while (p(node) != nullptr) {
-    if (node == p(node)->left) {
-      if (g(node) == nullptr) {
-        RotateRight(p(node));  // zig
-      } else if (p(node) == g(node)->left) {
-        RotateRight(g(node));  // zig-zig
-        RotateRight(p(node));
+    if (v->left != nullptr) {
+      v->left->parent = v;
+    }
+  }
+
+  void Splay(Node* v) {
+    while (v->parent != nullptr) {
+      if (v == v->parent->left) {
+        if (v->parent->parent == nullptr) {
+          RotateRight(v->parent);  // zig
+        } else if (v->parent == v->parent->parent->left) {
+          RotateRight(v->parent->parent);  // zig-zig
+          RotateRight(v->parent);
+        } else {
+          RotateRight(v->parent);  // zig-zag
+          RotateLeft(v->parent);
+        }
       } else {
-        RotateRight(p(node));  // zig-zag
-        RotateLeft(p(node));
-      }
-    } else {
-      if (g(node) == nullptr) {
-        RotateLeft(p(node));  // zig
-      } else if (p(node) == g(node)->right) {
-        RotateLeft(g(node));  // zig-zig
-        RotateLeft(p(node));
-      } else {
-        RotateLeft(p(node));  // zig-zag
-        RotateRight(p(node));
+        if (v->parent->parent == nullptr) {
+          RotateLeft(v->parent);  // zig
+        } else if (v->parent == v->parent->parent->right) {
+          RotateLeft(v->parent->parent);  // zig-zig
+          RotateLeft(v->parent);
+        } else {
+          RotateLeft(v->parent);  // zig-zag
+          RotateRight(v->parent);
+        }
       }
     }
   }
-}
 
-template <typename T, typename V>
-void SplayTree<T, V>::Insert(T key, const V& value, Node<T, V>* node) {
-  auto trees = Split(node, key);
-  auto x = new Node<T, V>(key, value, nullptr, nullptr, nullptr);
-  root_ = Merge(Merge(trees.first, x), trees.second);
-}
-
-template <typename T, typename V>
-Node<T, V>* SplayTree<T, V>::Find(Node<T, V>* st_node,
-                                                      T key) {
-  auto node = root_;
-  while (node != nullptr) {
-    if (node->key == key) {
-      break;
-    }
-    if (node->key > key) {
-      node = node->left;
-    } else {
-      node = node->right;
-    }
-  }
-  return node;
-}
+  Node* root_;
+  Node* new_node_;
+};
 
 void AddParticipants(SplayTree<std::string, std::string>* tree) {
   size_t count;
   std::cin >> count;
-  std::string nick, car;
+  std::string nickname, car;
   for (size_t i = 0; i < count; ++i) {
-    std::cin >> nick >> car;
-    tree->Insert(nick, car);
+    std::cin >> nickname >> car;
+    tree->Insert(nickname, car);
+    tree->Insert(car, nickname);
   }
+}
+
+void EnableFastInput() {
+  std::ios::sync_with_stdio(false);
+  std::cin.tie(0);
+  std::cout.tie(0);
 }
 
 void ProcessRequests(SplayTree<std::string, std::string>* tree) {
   size_t count;
   std::cin >> count;
-  std::cout << "Ok";
+  std::string key;
+  for (size_t i = 0; i < count; ++i) {
+    std::cin >> key;
+    std::cout << (*tree)[key] << '\n';
+  }
 }
 
 int main() {
-  auto tree = new SplayTree<std::string, std::string>();
+  // EnableFastInput();
 
+  auto tree = new SplayTree<std::string, std::string>;
   AddParticipants(tree);
   ProcessRequests(tree);
-
   delete tree;
   return 0;
 }
