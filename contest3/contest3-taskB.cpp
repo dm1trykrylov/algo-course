@@ -1,3 +1,4 @@
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -5,44 +6,33 @@ namespace Constants {
 const int64_t kMod = 1e9;
 }
 
-template <typename T>
 class AVLTree {
- public:
   struct Node {
     Node* left{nullptr};
     Node* right{nullptr};
-    T value;
-    int height{0};
+    int value;
+    unsigned char height{0};
   };
 
-  AVLTree() : root_(nullptr) {}
+ public:
+  void Insert(int value) { root_ = Insert(root_, value); }
 
-  void Insert(T value) { root_ = Insert(root_, value); }
+  bool Find(int value) { return Find(root_, value); }
+
+  Node* LowerBound(int value, Node* prev) {
+    return LowerBound(value, root_, prev);
+  }
+
+  void Erase(int value) { root_ = Erase(root_, value); }
 
   ~AVLTree() {
-    Clear();
-    delete root_;
+    PostOrder(root_, [](Node* v) { delete v; });
   }
-
-  void Clear() {
-    if (root_ != nullptr) {
-      Clear(root_);
-    }
-    root_ = nullptr;
-  }
-
-  bool Find(T value) { return Find(root_, value); }
-
-  Node* LowerBound(T value, Node* prev) {
-    return LowerBound(root_, value, prev);
-  }
-
-  void Erase(T value) { root_ = Erase(root_, value); }
 
  private:
-  static Node* Erase(Node* node, T value) {
+  static Node* Erase(Node* node, int value) {
     if (node == nullptr) {
-      return node;
+      return nullptr;
     }
     if (node->value == value) {
       if (node->right == nullptr) {
@@ -50,19 +40,28 @@ class AVLTree {
         delete node;
         return FixBalance(temp);
       }
-      Node* right_min = FindMin(node->right);
+      Node* min_right = FindMin(node->right);
       node->right = UnlinkMin(node->right);
-      right_min->left = node->left;
-      right_min->right = node->right;
+      min_right->left = node->left;
+      min_right->right = node->right;
       delete node;
-      return FixBalance(right_min);
+      return FixBalance(min_right);
     }
-    if (value < node->value) {
+    if (value <= node->value) {
       node->left = Erase(node->left, value);
     } else {
       node->right = Erase(node->right, value);
     }
     return FixBalance(node);
+  }
+
+  void PostOrder(Node* v, const std::function<void(Node*)>& callback) {
+    if (v == nullptr) {
+      return;
+    }
+    PostOrder(v->left, callback);
+    PostOrder(v->right, callback);
+    callback(v);
   }
 
   static Node* FindMin(Node* node) {
@@ -80,52 +79,39 @@ class AVLTree {
     return FixBalance(node);
   }
 
-  static bool Find(Node* node, T value) {
+  static bool Find(Node* node, int value) {
     if (node == nullptr) {
       return false;
     }
     if (node->value == value) {
       return true;
     }
-    if (value < node->value) {
+    if (value <= node->value) {
       return Find(node->left, value);
-    } else {
-      return Find(node->right, value);
     }
+    return Find(node->right, value);
   }
 
-  static Node* LowerBound(Node* node, T value, Node* prev) {
+  static Node* LowerBound(int value, Node* node, Node* prev) {
     if (node == nullptr) {
       return prev;
     }
     if (node->value == value) {
       return node;
     }
-    if (node->value > value) {
-      return LowerBound(node->left, value, node);
-    } else {
-      return LowerBound(node->right, value, prev);
+    if (node->value < value) {
+      return LowerBound(value, node->right, prev);
     }
+    return LowerBound(value, node->left, node);
   }
 
-  static void Clear(Node* node) {
-    if (node->left != nullptr) {
-      Clear(node->left);
-    }
-    if (node->right != nullptr) {
-      Clear(node->right);
-    }
-    delete node;
-  }
-
-  static Node* Insert(Node* node, T value) {
+  static Node* Insert(Node* node, int value) {
     if (node == nullptr) {
       Node* new_node = new Node;
       new_node->value = value;
       return new_node;
     }
-    // <=
-    if (value < node->value) {
+    if (value <= node->value) {
       node->left = Insert(node->left, value);
     } else {
       node->right = Insert(node->right, value);
@@ -133,60 +119,58 @@ class AVLTree {
     return FixBalance(node);
   }
 
-  static int Height(Node* node) {
-    return node == nullptr ? 0 : static_cast<int>(node->height);
-  }
-
-  static int BalanceFactor(Node* node) {
-    return node == nullptr ? 0 : Height(node->right) - Height(node->left);
-  }
-
-  static void CalcHeight(Node* node) {
+  static void FixHeight(Node* node) {
     if (node == nullptr) {
       return;
     }
     node->height = std::max(Height(node->left), Height(node->right)) + 1;
   }
 
-  static Node* RightRotate(Node* p) {
+  static Node* RotateRight(Node* p) {
     Node* q = p->left;
     p->left = q->right;
     q->right = p;
-    CalcHeight(p);
-    CalcHeight(q);
+    FixHeight(p);
+    FixHeight(q);
     return q;
   }
 
-  static Node* LeftRotate(Node* q) {
+  static Node* RotateLeft(Node* q) {
     Node* p = q->right;
     q->right = p->left;
     p->left = q;
-    CalcHeight(q);
-    CalcHeight(p);
+    FixHeight(q);
+    FixHeight(p);
     return p;
   }
 
   static Node* FixBalance(Node* node) {
-    CalcHeight(node);
+    FixHeight(node);
     if (BalanceFactor(node) == 2) {
       if (BalanceFactor(node->right) == -1) {
-        node->right = RightRotate(node->right);
+        node->right = RotateRight(node->right);
       }
-      return LeftRotate(node);
+      return RotateLeft(node);
     }
     if (BalanceFactor(node) == -2) {
       if (BalanceFactor(node->left) == 1) {
-        node->left = LeftRotate(node->left);
+        node->left = RotateLeft(node->left);
       }
-      return RightRotate(node);
+      return RotateRight(node);
     }
     return node;
+  }
+
+  static int Height(Node* node) { return node == nullptr ? 0 : node->height; }
+
+  static int BalanceFactor(Node* node) {
+    return node == nullptr ? 0 : Height(node->right) - Height(node->left);
   }
 
   Node* root_{nullptr};
 };
 
-void Insert(int64_t value, int64_t prev, AVLTree<int64_t>* tree) {
+void Insert(int value, int& prev, AVLTree* tree) {
   value = (value + prev) % Constants::kMod;
   auto res = tree->Find(value);
   if (!res) {
@@ -195,7 +179,7 @@ void Insert(int64_t value, int64_t prev, AVLTree<int64_t>* tree) {
   prev = 0;
 }
 
-void Find(int64_t value, int64_t& prev, AVLTree<int64_t>* tree) {
+void Find(int value, int& prev, AVLTree* tree) {
   auto result = tree->LowerBound(value, nullptr);
   if (result == nullptr) {
     prev = -1;
@@ -206,11 +190,11 @@ void Find(int64_t value, int64_t& prev, AVLTree<int64_t>* tree) {
   std::cout << result->value << '\n';
 }
 
-void ProcessRequests(AVLTree<int64_t>* tree) {
+void ProcessRequests(AVLTree* tree) {
   size_t requests;
   std::cin >> requests;
   char request;
-  int64_t value, prev = 0;
+  int value, prev = 0;
   for (size_t i = 0; i < requests; ++i) {
     std::cin >> request >> value;
     if (request == '+') {
@@ -222,7 +206,7 @@ void ProcessRequests(AVLTree<int64_t>* tree) {
 }
 
 int main() {
-  auto avl = new AVLTree<int64_t>();
+  auto avl = new AVLTree();
 
   ProcessRequests(avl);
 
