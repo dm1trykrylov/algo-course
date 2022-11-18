@@ -30,7 +30,7 @@
 *.exe
 *.out
 *.app
-main
+/*/exec
 
 # VS Code files
 *.json
