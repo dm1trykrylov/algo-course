@@ -35,3 +35,4 @@ main
 # VS Code files
 *.json
 *.txt
+*/exec*/
