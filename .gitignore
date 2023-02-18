@@ -1,9 +1,6 @@
 # Prerequisites
 *.d
 
-# Makefiles
-*/Makefile
-
 # Compiled Object files
 *.slo
 *.lo
@@ -39,3 +36,4 @@ main
 # VS Code files
 *.json
 *.txt
+
