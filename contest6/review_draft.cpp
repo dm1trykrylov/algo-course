@@ -193,58 +193,106 @@ class UndirectedListGraph : public ListGraph<VType, EType> {
   }
 };
 
-static constexpr size_t kInfty = std::numeric_limits<size_t>::max();
+template <class VType = size_t, class EType = std::pair<VType, VType>>
+class Visitor {
+ public:
+  virtual void DiscoverVertex(const VType vertex) = 0;
+  virtual void TreeEdge(const EType& edge) = 0;
+  virtual void BackEdge(const EType& edge) = 0;
+  virtual void FinishEdge(const EType& edge) = 0;
+  ~Visitor() = default;
+};
 
-template <typename Graph>
+template <class VType = size_t, class EType = std::pair<VType, VType>>
+class DFSVisitor : public Visitor<VType, EType> {
+ public:
+  void InitializeTimer(size_t vertex_count) {
+    timer_.in.resize(vertex_count + 1, kInfty);
+    timer_.up.resize(vertex_count + 1, kInfty);
+    timer_.time = 0;
+  }
+  void DiscoverVertex(const VType vertex) final {
+    timer_.in[vertex] = timer_.time++;
+    timer_.up[vertex] = timer_.in[vertex];
+  }
+  void TreeEdge(const EType& edge) final {
+    const VType& from = edge.first;
+    const VType& to = edge.second;
+    timer_.up[from] = std::min(timer_.up[from], timer_.up[to]);
+  }
+  void BackEdge(const EType& edge) final {
+    const VType& from = edge.first;
+    const VType& to = edge.second;
+    timer_.up[from] = std::min(timer_.up[from], timer_.in[to]);
+  }
+  void FinishEdge(const EType& edge) final {
+    const VType& from = edge.first;
+    const VType& to = edge.second;
+    if (timer_.up[to] > timer_.in[from]) {
+      bridges_.push_back(edge);
+      is_bridge_[edge] = true;
+    }
+  }
+
+  bool IsBridge(const EType& edge) { return is_bridge_[edge]; }
+
+  std::vector<EType> GetBridges() { return bridges_; }
+
+ private:
+  static constexpr size_t kInfty = std::numeric_limits<size_t>::max();
+  struct Time {
+    std::vector<size_t> in;
+    std::vector<size_t> up;
+    size_t time;
+  };
+  Time timer_;
+  std::map<EType, bool> is_bridge_;
+  std::vector<EType> bridges_;
+};
+
+template <class Graph, class Visitor>
 class DFSImpl {
  private:
-  struct Time {
-    std::vector<size_t>& in;
-    std::vector<size_t>& up;
-    size_t& time;
-  };
+  Graph& graph_;
+  Visitor& visitor_;
+  enum Colors { White, Grey, Black };
+  using VType = typename Graph::VertexType;
+  using EType = typename Graph::EdgeType;
+  using Color = char;
+  std::unordered_map<VType, Color> colors_;
 
  public:
-  void DFS(typename Graph::EdgeType parent, typename Graph::VertexType from,
-           Graph& graph, Time& time,
-           std::vector<typename Graph::EdgeType>& bridges) {
-    // using VType = typename Graph::VertexType;
-    using EType = typename Graph::EdgeType;
-    time.in[from] = time.time++;
-    time.up[from] = time.in[from];
-    auto neighbours = graph.NeighboursIt(from, [&](const EType& edge) {
-      return (edge.second != from) && (edge.id != parent.id);
+  DFSImpl(Graph& graph, Visitor& visitor) : graph_(graph), visitor_(visitor) {}
+
+  void DFS(size_t from_edge_id, typename Graph::VertexType from) {
+    visitor_.DiscoverVertex(from);
+    colors_[from] = Grey;
+    auto neighbours = graph_.NeighboursIt(from, [&](const EType& edge) {
+      return (colors_[edge.second] != Black) && (edge.second != from) &&
+             (edge.id != from_edge_id);
     });
     for (auto edge : neighbours) {
       auto to = edge.second;
-      if (time.in[to] != kInfty) {
-        time.up[from] = std::min(time.up[from], time.in[to]);
+      if (colors_[to] == Grey) {
+        visitor_.BackEdge(edge);
       } else {
-        DFS(edge, edge.second, graph, time, bridges);
-        time.up[from] = std::min(time.up[to], time.up[from]);
+        DFS(edge.id, edge.second);
+        visitor_.TreeEdge(edge);
       }
-      if (time.up[to] > time.in[from]) {
-        bridges.push_back(edge);
-      }
+      visitor_.FinishEdge(edge);
     };
+    colors_[from] = Black;
   }
 
-  void GetBridges(Graph& graph,
-                  std::vector<typename Graph::EdgeType>& bridges) {
-    bridges.clear();
-    auto vertexes = graph.Vertexes();
-
-    std::vector<size_t> time_in(vertexes.size() + 1, kInfty);  // time in
-    std::vector<size_t> f_up(
-        vertexes.size() + 1,
-        kInfty);      // aka RET(from lecture) magic function :)
-    size_t time = 0;  // time now
-    Time timer{time_in, f_up, time};
-    //      BridgesDfs(graph, edges, timer, {i, kInfty}, bridges);
-
+  void FindBridges() {
+    auto vertexes = graph_.Vertexes();
+    for (auto& v : vertexes) {
+      colors_[v] = White;
+    };
+    visitor_.InitializeTimer(vertexes.size());
     for (auto v : vertexes) {
-      if (timer.in[v] == kInfty) {
-        DFS({v, v, 0}, v, graph, timer, bridges);
+      if (colors_[v] == White) {
+        DFS(0, v);
       }
     }
   }
@@ -286,6 +334,15 @@ void ReadGraph(std::vector<EType>& edges_list, std::vector<VType>& g) {
   };
 }
 
+template <typename EType>
+void PrintBridges(std::vector<EType>& bridges) {
+  std::sort(bridges.begin(), bridges.end());
+  std::cout << bridges.size() << '\n';
+  for (auto bridge : bridges) {
+    std::cout << bridge.id << '\n';
+  }
+}
+
 int main() {
   FastIO();
   size_t vertexes;
@@ -297,15 +354,13 @@ int main() {
   ReadGraph(edges_list, vertex_list);
   UndirectedListGraph<uint32_t, EType> graph(vertex_list, edges_list);
 
-  std::vector<EType> bridges;
-  DFSImpl<UndirectedListGraph<uint32_t, EType>> dfs;
-  dfs.GetBridges(graph, bridges);
+  DFSVisitor<uint32_t, EType> visitor;
 
-  std::sort(bridges.begin(), bridges.end());
-  std::cout << bridges.size() << '\n';
-  for (auto bridge : bridges) {
-    std::cout << bridge.id << '\n';
-  }
+  DFSImpl<UndirectedListGraph<uint32_t, EType>, DFSVisitor<uint32_t, EType>>
+      dfs(graph, visitor);
+  dfs.FindBridges();
+  std::vector<EType> bridges = visitor.GetBridges();
+  PrintBridges<EType>(bridges);
 
   return 0;
 }
