@@ -207,24 +207,20 @@ class Visitor {
 template <class VType = size_t, class EType = std::pair<VType, VType>>
 class BFSVisitor : public Visitor<VType, EType> {
  public:
-  void DiscoverVertex(const VType& vertex) final {}
+  void DiscoverVertex(const VType& vertex) final { parents_[vertex] = vertex; }
   void TreeEdge(const EType& edge) final {
     const VType& from = edge.first;
     const VType& to_v = edge.second;
-    parents[to_v] = from;
+    parents_[to_v] = from;
   }
-  void BackEdge(const EType& edge) final {
-    const VType& from = edge.first;
-    const VType& to_v = edge.second;
-  }
-  void FinishEdge(const EType& edge) final {
-    const VType& from = edge.first;
-    const VType& to_v = edge.second;
-  }
+  void BackEdge(const EType& edge) final {}
+  void FinishEdge(const EType& edge) final {}
+
+  VType Parent(const VType& vertex) { return parents_[vertex]; }
 
  private:
   static constexpr size_t kInfty = std::numeric_limits<size_t>::max();
-  std::unordered_map<VType, VType> parents;
+  std::unordered_map<VType, VType> parents_;
 };
 
 template <class Graph, class Visitor>
@@ -237,147 +233,74 @@ class BFSImpl {
   using EType = typename Graph::EdgeType;
   using Color = char;
   std::unordered_map<VType, Color> colors_;
-  static constexpr size_t kInfty = std::numeric_limits<size_t>::max();
 
  public:
   BFSImpl(Graph& graph, Visitor& visitor) : graph_(graph), visitor_(visitor) {}
 
-  void BFS(typename Graph::VertexType from, typename Graph::VertexType to,
-           std::unordered_map<typename Graph::VertexType,
-                              typename Graph::VertexType>& parents) {
-    std::unordered_map<typename Graph::VertexType, size_t> distance(
-        graph_.VertexCount());
-    for (auto vertex : graph_.Vertexes()) {
-      distance[vertex] = kInfty;
-    }
-    distance[from] = 0;
-
+  void BFS(typename Graph::VertexType from) {
+    auto vertexes = graph_.Vertexes();
+    for (auto& vertex : vertexes) {
+      colors_[vertex] = White;
+    };
     std::queue<typename Graph::VertexType> bfs_queue;
     bfs_queue.push(from);
-    typename Graph::VertexType vertex;
+    colors_[from] = Grey;
+    visitor_.DiscoverVertex(from);
     while (!bfs_queue.empty()) {
-      vertex = bfs_queue.front();
+      from = bfs_queue.front();
+
       bfs_queue.pop();
-      visitor_.DiscoverVertex(vertex);
-      auto neighbours =
-          graph_.NeighboursIt(vertex, [&](const EType&) { return true; });
+      auto neighbours = graph_.NeighboursIt(from, [&](const EType& edge) {
+        return colors_[edge.second] == White;
+      });
       for (auto edge : neighbours) {
-        if (distance[edge.second] > distance[vertex] + 1) {
-          distance[edge.second] = distance[vertex] + 1;
-          bfs_queue.push(edge.second);
-          parents[edge.second] = vertex;
-          visitor_.TreeEdge(edge);
-        }
-        if (edge.second == to) {
-          throw std::logic_error("Found path!");
-        }
+        colors_[edge.second] = Grey;
+        bfs_queue.push(edge.second);
+        visitor_.TreeEdge(edge);
       }
+      colors_[from] = Black;
     }
-  }
-
-  bool FindPath(typename Graph::VertexType from, typename Graph::VertexType to,
-                std::vector<typename Graph::VertexType>& path) {
-    std::unordered_map<typename Graph::VertexType, typename Graph::VertexType>
-        parents;
-    auto vertexes = graph_.Vertexes();
-
-    try {
-      BFS(from, to, parents);
-    } catch (std::exception& e) {
-      path.push_back(to);
-      to = parents[to];
-      while (to != from) {
-        path.push_back(to);
-        to = parents[to];
-      }
-      path.push_back(from);
-      std::reverse(path.begin(), path.end());
-      return true;
-    }
-
-    return false;
   }
 };
 
-enum Colors { White, Grey, Black };
-
-static constexpr size_t kInfty = std::numeric_limits<size_t>::max();
-
-template <typename Graph>
-void BFS(typename Graph::VertexType from, typename Graph::VertexType to,
-         Graph& graph,
-         std::unordered_map<typename Graph::VertexType,
-                            typename Graph::VertexType>& parents) {
-  // using VType = typename Graph::VertexType;
-  using EType = typename Graph::EdgeType;
-  std::unordered_map<typename Graph::VertexType, size_t> distance(
-      graph.VertexCount());
-  for (auto vertex : graph.Vertexes()) {
-    distance[vertex] = kInfty;
+template <class Graph>
+bool GetPath(typename Graph::VertexType source,
+             typename Graph::VertexType target,
+             BFSVisitor<typename Graph::VertexType>& visitor,
+             std::vector<typename Graph::VertexType>& path) {
+  if (visitor.Parent(target) == 0) {
+    return false;  // to has not been accessed
   }
-  distance[from] = 0;
-
-  std::queue<typename Graph::VertexType> bfs_queue;
-  bfs_queue.push(from);
-  typename Graph::VertexType vertex;
-  while (!bfs_queue.empty()) {
-    vertex = bfs_queue.front();
-    bfs_queue.pop();
-    auto neighbours =
-        graph.NeighboursIt(vertex, [&](const EType&) { return true; });
-    for (auto edge : neighbours) {
-      if (distance[edge.second] > distance[vertex] + 1) {
-        distance[edge.second] = distance[vertex] + 1;
-        bfs_queue.push(edge.second);
-        parents[edge.second] = vertex;
-      }
-      if (edge.second == to) {
-        throw std::logic_error("Found path!");
-      }
-    }
+  path.push_back(target);
+  auto old_to = target;
+  target = visitor.Parent(target);
+  while (target != source) {
+    path.push_back(target);
+    target = visitor.Parent(target);
   }
-}
-
-template <typename Graph>
-bool FindPath(Graph& graph, typename Graph::VertexType from,
-              typename Graph::VertexType to,
-              std::vector<typename Graph::VertexType>& path) {
-  std::unordered_map<typename Graph::VertexType, typename Graph::VertexType>
-      parents;
-  auto vertexes = graph.Vertexes();
-
-  try {
-    BFS(from, to, graph, parents);
-  } catch (std::exception& e) {
-    path.push_back(to);
-    to = parents[to];
-    while (to != from) {
-      path.push_back(to);
-      to = parents[to];
-    }
-    path.push_back(from);
-    std::reverse(path.begin(), path.end());
-    return true;
+  if (old_to != source) {
+    path.push_back(source);
   }
-
-  return false;
+  std::reverse(path.begin(), path.end());
+  return true;
 }
 
 template <class VType = size_t, class EType = std::pair<VType, VType>>
-void ReadGraph(std::vector<EType>& edges_list, std::vector<VType>& g) {
+void ReadGraph(std::vector<EType>& edges_list,
+               std::vector<VType>& vertex_list) {
   for (auto& edge : edges_list) {
     std::cin >> edge.first >> edge.second;
   }
   size_t cnt = 1;
-  for (auto& v : g) {
-    v = cnt++;
+  for (auto& vertex : vertex_list) {
+    vertex = cnt++;
   };
 }
 
 template <typename T>
 void Print(std::vector<T>& array, char delim = '\n') {
-  for (auto a : array) {
-    std::cout << a << delim;
+  for (auto element : array) {
+    std::cout << element << delim;
   }
 }
 
@@ -397,18 +320,19 @@ int main() {
   std::cin >> source >> target;
 
   std::vector<std::pair<size_t, size_t>> edges_list(edges);
-  std::vector<size_t> g(vertexes);
-  ReadGraph(edges_list, g);
+  std::vector<size_t> vertex_list(vertexes);
+  ReadGraph(edges_list, vertex_list);
 
-  UndirectedListGraph<size_t> graph(g, edges_list);
+  BFSVisitor visitor;
+  UndirectedListGraph<size_t> graph(vertex_list, edges_list);
+  BFSImpl<UndirectedListGraph<size_t>, Visitor<size_t>> bfs(graph, visitor);
   std::vector<size_t> path;
-  if (source == target) {
-    std::cout << 0 << '\n' << source;
-  } else if (FindPath(graph, source, target, path)) {
+  bfs.BFS(source);
+  if (GetPath<UndirectedListGraph<size_t>>(source, target, visitor, path)) {
     std::cout << path.size() - 1 << '\n';
     Print(path, ' ');
   } else {
-    std::cout << -1;
+    std::cout << -2;
   }
   return 0;
 }
