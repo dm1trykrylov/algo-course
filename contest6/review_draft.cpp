@@ -81,15 +81,70 @@ class Graph {
 };
 
 template <class VType = size_t, class EType = std::pair<VType, VType>>
+class MatrixGraph : public Graph<VType, EType> {
+  MatrixGraph(const std::vector<VType>& vertexes,
+              const std::vector<EType>& edges)
+      : vertexes_(vertexes),
+        num_vertex_(vertexes.size()),
+        num_edges_(edges.size()) {
+    adjacency_matrix_.resize(num_vertex_);
+    for (auto row : adjacency_matrix_) {
+      row.resize(num_vertex_);
+    }
+    for (auto& edge : edges) {
+      adjacency_matrix_[edge.first][edge.second] = edge;
+    }
+  }
+
+  size_t EdgeCount() const final { return num_edges_; }
+
+  size_t VertexCount() const final { return num_vertex_; }
+
+  typename std::vector<EType>::iterator NeighboursBegin(VType v) final {
+    return adjacency_matrix_[v].begin();
+  }
+
+  typename std::vector<EType>::iterator NeighboursEnd(VType v) final {
+    return adjacency_matrix_[v].end();
+  }
+
+  std::vector<VType> Vertexes() const final { return vertexes_; }
+
+  IteratorImpl<VType, EType> NeighboursIt(
+      VType v, const FilterFunction<EType>& filter) override {
+    return {v, NeighboursBegin(v), NeighboursEnd(v), filter};
+  }
+
+ protected:
+  std::vector<std::vector<EType>> adjacency_matrix_;
+  std::vector<VType> vertexes_;
+  size_t num_vertex_;
+  size_t num_edges_;
+};
+
+template <class VType = size_t, class EType = std::pair<VType, VType>>
+class UndirectedMatrixGraph : public MatrixGraph<VType, EType> {
+ public:
+  using MatrixGraph<VType, EType>::adjacency_lists_;
+  UndirectedMatrixGraph(const std::vector<VType>& vertexes,
+                        const std::vector<EType>& edges)
+      : MatrixGraph<VType, EType>(vertexes, edges) {
+    for (auto& edge : edges) {
+      adjacency_lists_[edge.first].push_back(edge);
+      adjacency_lists_[edge.second].push_back(edge);
+      auto& back_edge = *adjacency_lists_[edge.second].rbegin();
+      std::swap(back_edge.first, back_edge.second);
+    }
+  }
+};
+
+template <class VType = size_t, class EType = std::pair<VType, VType>>
 class ListGraph : public Graph<VType, EType> {
  public:
   ListGraph(const std::vector<VType>& vertexes, const std::vector<EType>& edges)
       : vertexes_(vertexes),
         num_vertex_(vertexes.size()),
         num_edges_(edges.size()) {
-    for (auto& vertex : vertexes) {
-      adjacency_lists_[vertex] = std::vector<EType>();
-    }
     for (auto& edge : edges) {
       adjacency_lists_[edge.first].push_back(edge);
     }
@@ -129,10 +184,11 @@ class UndirectedListGraph : public ListGraph<VType, EType> {
                       const std::vector<EType>& edges)
       : ListGraph<VType, EType>(vertexes, edges) {
     for (auto& edge : edges) {
-      adjacency_lists_[edge.first].push_back(edge);
       adjacency_lists_[edge.second].push_back(edge);
+      // by default all edges from v should have edge.first = v
       auto& back_edge = *adjacency_lists_[edge.second].rbegin();
-      std::swap(back_edge.first, back_edge.second);
+      std::swap(back_edge.first,
+                back_edge.second);  // that's why we reverse this edge
     }
   }
 };
@@ -237,14 +293,15 @@ int main() {
   std::cin >> vertexes >> edges;
   using EType = Edge<uint32_t>;
   std::vector<EType> edges_list(edges);
-  std::vector<uint32_t> g(vertexes);
-  ReadGraph(edges_list, g);
-  UndirectedListGraph<uint32_t, EType> graph(g, edges_list);
+  std::vector<uint32_t> vertex_list(vertexes);
+  ReadGraph(edges_list, vertex_list);
+  UndirectedListGraph<uint32_t, EType> graph(vertex_list, edges_list);
+
   std::vector<EType> bridges;
   DFSImpl<UndirectedListGraph<uint32_t, EType>> dfs;
   dfs.GetBridges(graph, bridges);
+
   std::sort(bridges.begin(), bridges.end());
-  bridges.erase(std::unique(bridges.begin(), bridges.end()), bridges.end());
   std::cout << bridges.size() << '\n';
   for (auto bridge : bridges) {
     std::cout << bridge.id << '\n';
