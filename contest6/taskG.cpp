@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Graph {
 template <class T>
 using FilterFunction = std::function<bool(const T)>;
 
@@ -194,9 +193,7 @@ class UndirectedListGraph : public ListGraph<VType, EType> {
     }
   }
 };
-};  // namespace Graph
 
-namespace Visitor {
 template <class VType = size_t, class EType = std::pair<VType, VType>>
 class Visitor {
  public:
@@ -254,7 +251,6 @@ class DFSVisitor : public Visitor<VType, EType> {
   std::vector<EType> bridges_;
 };
 
-}  // namespace Visitor
 
 template <class Graph, class Visitor>
 class DFSImpl {
@@ -358,12 +354,11 @@ int main() {
   std::vector<EType> edges_list(edges);
   std::vector<uint32_t> vertex_list(vertexes);
   ReadGraph(edges_list, vertex_list);
-  Graph::UndirectedListGraph<uint32_t, EType> graph(vertex_list, edges_list);
+  UndirectedListGraph<uint32_t, EType> graph(vertex_list, edges_list);
 
-  Visitor::DFSVisitor<uint32_t, EType> visitor;
+  DFSVisitor<uint32_t, EType> visitor;
 
-  DFSImpl<Graph::UndirectedListGraph<uint32_t, EType>,
-          Visitor::DFSVisitor<uint32_t, EType>>
+  DFSImpl<UndirectedListGraph<uint32_t, EType>, DFSVisitor<uint32_t, EType>>
       dfs(graph, visitor);
   dfs.FindBridges();
   std::vector<EType> bridges = visitor.GetBridges();
