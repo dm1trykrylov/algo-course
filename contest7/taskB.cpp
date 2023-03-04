@@ -266,7 +266,7 @@ class Dijkstra {
     queue.emplace(distances_[from], from);
 
     while (!queue.empty()) {
-      auto[dist, current] = queue.top();
+      auto [dist, current] = queue.top();
       queue.pop();
       if (dist > distances_[current]) {
         continue;
@@ -293,11 +293,11 @@ template <class VType = size_t, class EType = std::pair<VType, VType>,
 void ReadGraph(std::vector<EType>& edges_list, std::vector<VType>& vertex_list,
                AbstractMetric<T>& metric) {
   T weight;
-  for (auto & [ from, to ] : edges_list) {
+  for (auto& [from, to] : edges_list) {
     std::cin >> from >> to >> weight;
     metric.SetDist(from, to, weight);
   }
-  size_t cnt = 0;
+  size_t cnt = 1;
   for (auto& vertex : vertex_list) {
     vertex = cnt++;
   };
@@ -317,35 +317,40 @@ void FastIO() {
 }
 
 void ReadGraphAndFindPath() {
-  size_t vertexes;
-  size_t edges;
-  std::cin >> vertexes >> edges;
-
-  DistMetric<size_t> dist;
-
-  std::vector<std::pair<size_t, size_t>> edges_list(edges);
-  std::vector<size_t> vertex_list(vertexes);
-  ReadGraph(edges_list, vertex_list, dist);
+  size_t vertexes_count;
+  size_t edges_count;
+  size_t infected_count;
+  std::cin >> vertexes_count >> edges_count >> infected_count;
+  std::vector<size_t> infected(infected_count);
+  for (size_t i = 0; i < infected_count; ++i) {
+    std::cin >> infected[i];
+  }
+  DistMetric<int64_t> dist;
+  std::vector<std::pair<size_t, size_t>> edges(edges_count);
+  std::vector<size_t> vertexes(vertexes_count);
+  ReadGraph(edges, vertexes, dist);
   size_t source;
-  std::cin >> source;
+  size_t target;
+  std::cin >> source >> target;
 
   DijkstraVisitor<size_t> visitor;
-  UndirectedListGraph<size_t> graph(vertex_list, edges_list);
-  Dijkstra<UndirectedListGraph<size_t>, DijkstraVisitor<size_t>, size_t>
+  UndirectedListGraph<size_t> graph(vertexes, edges);
+  Dijkstra<UndirectedListGraph<size_t>, DijkstraVisitor<size_t>, int64_t>
       dijkstra(graph, visitor);
-  dijkstra(source, 2009000999, dist);
-  for (auto v : graph.Vertexes()) {
-    std::cout << dijkstra.Distance(v) << ' ';
+  int64_t max_dist = std::numeric_limits<int64_t>::max();
+  dijkstra(target, max_dist, dist);
+  int64_t min_time = dijkstra.Distance(source);
+  for (auto vertex : infected) {
+    if (dijkstra.Distance(vertex) < min_time) {
+      min_time = -1;
+      break;
+    }
   }
+  std::cout << min_time;
 }
 
 int main() {
   FastIO();
-  size_t maps_count;
-  std::cin >> maps_count;
-  for (size_t i = 0; i < maps_count; ++i) {
-    ReadGraphAndFindPath();
-    std::cout << '\n';
-  }
+  ReadGraphAndFindPath();
   return 0;
 }
