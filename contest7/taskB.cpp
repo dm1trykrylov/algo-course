@@ -210,6 +210,7 @@ class AbstractMetric {
  public:
   virtual T operator()(size_t from, size_t to) noexcept = 0;
   virtual void SetDist(size_t from, size_t to, T dist) = 0;
+  virtual bool UpdateDist(size_t from, size_t to, T dist) = 0;
 };
 
 template <typename T>
@@ -220,8 +221,21 @@ class DistMetric : public AbstractMetric<T> {
  public:
   DistMetric() {}
 
-  void SetDist(size_t from, size_t to, T dist) override {
-    dist_[{std::min(from, to), std::max(from, to)}] = dist;
+  void SetDist(size_t v_from, size_t v_to, T dist) override {
+    size_t from = std::min(v_from, v_to);
+    size_t to = std::max(v_from, v_to);
+    dist_[{from, to}] = dist;
+  }
+
+  bool UpdateDist(size_t v_from, size_t v_to, T dist) override {
+    size_t from = std::min(v_from, v_to);
+    size_t to = std::max(v_from, v_to);
+    if (dist_[{from, to}] == 0 || dist_[{from, to}] > dist) {
+      dist_[{from, to}] = dist;
+      return true;
+    } else {
+      return false;
+    }
   }
 
   T operator()(size_t from, size_t to) noexcept override {
@@ -259,8 +273,8 @@ class Dijkstra {
     }
     distances_[from] = 0;
 
-    std::priority_queue<std::pair<VType, T>, std::vector<std::pair<VType, T>>,
-                        std::greater<std::pair<VType, T>>>
+    std::priority_queue<std::pair<T, VType>, std::vector<std::pair<T, VType>>,
+                        std::greater<std::pair<T, VType>>>
         queue;
 
     queue.emplace(distances_[from], from);
@@ -279,7 +293,7 @@ class Dijkstra {
         if (distances_[current] + distance < distances_[neighbour]) {
           distances_[neighbour] = distances_[current] + distance;
           queue.emplace(distances_[neighbour], neighbour);
-          visitor_.EdgeRelaxed(edge);
+          // visitor_.EdgeRelaxed(edge);
         }
       }
     }
@@ -292,10 +306,13 @@ template <class VType = size_t, class EType = std::pair<VType, VType>,
           typename T>
 void ReadGraph(std::vector<EType>& edges_list, std::vector<VType>& vertex_list,
                AbstractMetric<T>& metric) {
+  VType v_from, v_to;
   T weight;
-  for (auto& [from, to] : edges_list) {
-    std::cin >> from >> to >> weight;
-    metric.SetDist(from, to, weight);
+  for (size_t i = 0; i < edges_list.capacity(); ++i) {
+    std::cin >> v_from >> v_to >> weight;
+    if (metric.UpdateDist(v_from, v_to, weight)) {
+      edges_list.push_back({v_from, v_to});
+    }
   }
   size_t cnt = 1;
   for (auto& vertex : vertex_list) {
@@ -316,7 +333,8 @@ void FastIO() {
   std::cout.tie(nullptr);
 }
 
-void ReadGraphAndFindPath() {
+int main() {
+  FastIO();
   size_t vertexes_count;
   size_t edges_count;
   size_t infected_count;
@@ -326,9 +344,11 @@ void ReadGraphAndFindPath() {
     std::cin >> infected[i];
   }
   DistMetric<int64_t> dist;
-  std::vector<std::pair<size_t, size_t>> edges(edges_count);
+  std::vector<std::pair<size_t, size_t>> edges;
+  edges.reserve(edges_count);
   std::vector<size_t> vertexes(vertexes_count);
   ReadGraph(edges, vertexes, dist);
+  edges.shrink_to_fit();
   size_t source;
   size_t target;
   std::cin >> source >> target;
@@ -337,20 +357,16 @@ void ReadGraphAndFindPath() {
   UndirectedListGraph<size_t> graph(vertexes, edges);
   Dijkstra<UndirectedListGraph<size_t>, DijkstraVisitor<size_t>, int64_t>
       dijkstra(graph, visitor);
-  int64_t max_dist = std::numeric_limits<int64_t>::max();
+  int64_t max_dist = (std::numeric_limits<int64_t>::max() >> 2);
+  // int64_t max_dist = 100;
   dijkstra(target, max_dist, dist);
   int64_t min_time = dijkstra.Distance(source);
   for (auto vertex : infected) {
-    if (dijkstra.Distance(vertex) < min_time) {
+    if (dijkstra.Distance(vertex) <= min_time) {
       min_time = -1;
       break;
     }
   }
   std::cout << min_time;
-}
-
-int main() {
-  FastIO();
-  ReadGraphAndFindPath();
   return 0;
 }
