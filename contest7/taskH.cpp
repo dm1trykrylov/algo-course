@@ -1,24 +1,41 @@
+#include <algorithm>
 #include <iostream>
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <vector>
+
+const size_t kSize = 3;
+const size_t kMaxPos = 9;
+const size_t kOffset = 3;
 
 class State {
  private:
   uint64_t data_;
   size_t zero_pos_;
-  const uint64_t mask = 0xF;
-  static constexpr uint64_t AntiMasks[] = {
+  const uint64_t kMask = 0xF;
+
+  const static constexpr uint64_t k_anti_masks[] = {
       0xFFFFFFFF0, 0xFFFFFFF0F, 0xFFFFFF0FF, 0xFFFFF0FFF, 0xFFFF0FFFF,
       0xFFF0FFFFF, 0xFF0FFFFFF, 0xF0FFFFFFF, 0x0FFFFFFFF};
 
-  static constexpr uint64_t Masks[] = {0x00000000F, 0x0000000F0, 0x000000F00,
-                                       0x00000F000, 0x0000F0000, 0x000F00000,
-                                       0x00F000000, 0x0F0000000, 0xF00000000};
+  const static constexpr uint64_t k_masks[] = {
+      0x00000000F, 0x0000000F0, 0x000000F00, 0x00000F000, 0x0000F0000,
+      0x000F00000, 0x00F000000, 0x0F0000000, 0xF00000000};
 
  public:
-  State() : State(0){};
-  State(uint64_t data) : data_(data) {}
+  State() : State(0, 0){};
+  State(uint64_t data) : data_(data) {
+    zero_pos_ = 8;
+    for (size_t pos = 0; pos < 9; ++pos) {
+      if (GetTile(pos) == 0) {
+        zero_pos_ = pos;
+        break;
+      }
+    }
+  }
+  constexpr State(const uint64_t kData, const size_t kZeroPos)
+      : data_(kData), zero_pos_(kZeroPos) {}
   State(const State& rhs) {
     data_ = rhs.data_;
     zero_pos_ = rhs.zero_pos_;
@@ -34,12 +51,7 @@ class State {
   uint64_t GetTile(size_t position) const;
   void SetTile(size_t position, uint64_t value);
   void Swap(size_t lhs, size_t rhs);
-  State SwapC(size_t lhs, size_t rhs) {
-    State new_state(*this);
-    new_state.Swap(lhs, rhs);
-    return new_state;
-  }
-  void Print();
+  void Print() const;
 };
 
 bool operator==(const State& lhs, const State& rhs) {
@@ -50,90 +62,138 @@ bool operator<(const State& lhs, const State& rhs) {
   return lhs.Data() < rhs.Data();
 }
 
-bool Relax(State& from_state, State& to_state, State& source,
-           std::unordered_map<uint64_t, size_t>& distance,
-           std::priority_queue<std::pair<size_t, State>,
-                               std::vector<std::pair<size_t, State>>,
-                               std::greater<std::pair<size_t, State>>>& queue) {
-  uint64_t to = to_state.Data();
-  uint64_t from = from_state.Data();
-  if ((distance[to] == 0 && to != source.Data()) ||
-      distance[to] > distance[from] + 1) {
-    distance[to] = distance[from] + 1;
-    queue.push({distance[to], to_state});
-    return true;
-  }
-  return false;
-}
+int64_t ManhattanDistance(const State& state);
 
-void Dijkstra(State& source, State& target,
-              std::unordered_map<uint64_t, size_t>& distance) {
-  std::priority_queue<std::pair<size_t, State>,
-                      std::vector<std::pair<size_t, State>>,
-                      std::greater<std::pair<size_t, State>>>
-      queue;
-  auto td = std::make_pair(distance[source.Data()], source);
-  queue.emplace(td);
-  size_t zero_pos;
-  while (!queue.empty()) {
-    auto from = queue.top().second;
-    queue.pop();
-    // from.Print();
-    // std::cout << distance[from.Data()] << '\n';
-    if (from == target) {
-      break;
-    }
-    zero_pos = from.Zero();
-    if (zero_pos % 3 > 0) {  // move zero left
-      auto left = from;
-      left.Swap(zero_pos, zero_pos - 1);
-      Relax(from, left, source, distance, queue);
-    }
-    if (zero_pos % 3 < 2) {  // move zero right
-      auto right = from;
-      right.Swap(zero_pos, zero_pos + 1);
-      Relax(from, right, source, distance, queue);
-    }
-    if (zero_pos > 2) {  // move zero up
-      auto up = from;
-      up.Swap(zero_pos, zero_pos - 3);
-      Relax(from, up, source, distance, queue);
-    }
-    if (zero_pos < 6) {  // move zero down
-      auto down = from;
-      down.Swap(zero_pos, zero_pos + 3);
-      Relax(from, down, source, distance, queue);
-    }
-  }
-}
+int64_t ManhattanDistance(uint64_t tile, int64_t position);
 
-bool CheckZeroAccessibility(std::vector<uint64_t>& board, State& state) {
-  size_t counter = 0;
-  size_t zero_row = state.Zero() / 3 + 1;
-  for (size_t i = 0; i < board.size(); ++i) {
-    for (size_t j = 0; j < i; ++j) {
-      if (board[i] != 0 && board[i] < board[j]) {
-        ++counter;
+class Dijkstra {
+ private:
+  std::unordered_map<uint64_t, int64_t>& distance_;
+  // std::unordered_map<uint64_t, size_t>& h_distance_;
+  std::priority_queue<std::pair<int64_t, State>,
+                      std::vector<std::pair<int64_t, State>>,
+                      std::greater<std::pair<int64_t, State>>>
+      queue_;
+  // std::unordered_map<uint64_t, std::pair<char, uint64_t>> parents_;
+  std::unordered_map<uint64_t, char> parents_;
+  int64_t add_, substract_;
+
+  bool Relax(State& from_state, State& to_state, State& source,
+             char direction) {
+    uint64_t to = to_state.Data();
+    uint64_t from = from_state.Data();
+    if (distance_[to] == 0 && to != source.Data()) {
+      distance_[to] = distance_[from] + 1;
+      queue_.push({distance_[to] + add_ - substract_, to_state});
+      // parents_[to] = {direction, from};
+      parents_[to] = direction;
+      return true;
+    }
+    return false;
+  }
+
+ public:
+  Dijkstra(std::unordered_map<uint64_t, int64_t>& distance)
+      : distance_(distance) {}
+  void operator()(State& source, const State& target) {
+    // parents_[source.Data()] = {'S', source.Data()};
+    parents_[source.Data()] = 'S';
+    distance_[source.Data()] = 0;
+    queue_.push({distance_[source.Data()] + ManhattanDistance(source), source});
+    size_t zero_pos;
+
+    while (!queue_.empty()) {
+      auto from = queue_.top().second;
+      queue_.pop();
+      if (from.Data() == target.Data()) {
+        break;
+      }
+      zero_pos = from.Zero();
+      if (zero_pos % 3 > 0) {  // move zero left
+        auto left = from;
+        substract_ = ManhattanDistance(left.GetTile(zero_pos - 1));
+        left.Swap(zero_pos, zero_pos - 1);
+        add_ = ManhattanDistance(left.GetTile(zero_pos));
+        Relax(from, left, source, 'L');
+      }
+      if (zero_pos % 3 < 2) {  // move zero right
+        auto right = from;
+        substract_ = ManhattanDistance(right.GetTile(zero_pos + 1));
+        right.Swap(zero_pos, zero_pos + 1);
+        add_ = ManhattanDistance(right.GetTile(zero_pos));
+        Relax(from, right, source, 'R');
+      }
+      if (zero_pos > 2) {  // move zero up
+        auto up = from;
+        substract_ = ManhattanDistance(up.GetTile(zero_pos - 3));
+        up.Swap(zero_pos, zero_pos - 3);
+        add_ = ManhattanDistance(up.GetTile(zero_pos));
+        Relax(from, up, source, 'U');
+      }
+      if (zero_pos < 6) {  // move zero down
+        auto down = from;
+        substract_ = ManhattanDistance(down.GetTile(zero_pos + 3));
+        down.Swap(zero_pos, zero_pos + 3);
+        add_ = ManhattanDistance(down.GetTile(zero_pos));
+        Relax(from, down, source, 'D');
       }
     }
   }
-  return (counter + zero_row) % 2 == 0;
-}
+
+  std::string GetPath(State state) {
+    std::string path;
+    char direction;
+    size_t zero_pos = state.Zero();
+    while (parents_[state.Data()] != 'S') {
+      // direction = parents_[state.Data()].first;
+      direction = parents_[state.Data()];
+      path += direction;
+      switch (direction) {
+        case 'L':
+          state.Swap(zero_pos, zero_pos + 1);
+          break;
+        case 'R':
+          state.Swap(zero_pos, zero_pos - 1);
+          break;
+        case 'U':
+          state.Swap(zero_pos, zero_pos + 3);
+          break;
+        case 'D':
+          state.Swap(zero_pos, zero_pos - 3);
+          break;
+        default:
+          // return path;
+          break;
+      }
+      // state = parents_[state.Data()].second;
+      zero_pos = state.Zero();
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+  }
+};
+
+bool CheckZeroAccessibility(std::vector<uint64_t>& board /*, State& state*/);
+
+static constexpr State kTarget(2271560481, 8);
 
 int main() {
   std::vector<uint64_t> source_board(9, 0);
-  std::vector<uint64_t> target_board = {1, 2, 3, 4, 5, 6, 7, 8, 0};
+
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
       std::cin >> source_board[i * 3 + j];
     }
   }
   State source(source_board);
-  State target(target_board);
-  if (CheckZeroAccessibility(source_board, source)) {
-    std::unordered_map<uint64_t, size_t> distance;
-    Dijkstra(source, target, distance);
-    std::cout << distance[target.Data()];
+
+  if (CheckZeroAccessibility(source_board)) {
+    std::unordered_map<uint64_t, int64_t> distance;
+    // std::unordered_map<uint64_t, size_t> h_distance;
+    Dijkstra dijkstra(distance);
+    dijkstra(source, kTarget);
+    std::cout << distance[kTarget.Data()] << '\n';
+    std::cout << dijkstra.GetPath(kTarget);
   } else {
     std::cout << -1;
   }
@@ -148,27 +208,27 @@ State::State(std::vector<size_t>& tiles) {
 }
 
 uint64_t State::GetTile(size_t position) const {
-  return (data_ & Masks[position]) >> (position * 4);
+  return (data_ & k_masks[position]) >> (position * 4);
 }
 
 void State::SetTile(size_t position, uint64_t value) {
-  value &= Masks[0];
+  value &= k_masks[0];
   if (value == 0) {
     zero_pos_ = position;
   }
-  data_ &= AntiMasks[position];
+  data_ &= k_anti_masks[position];
   value <<= (position * 4);
   data_ |= value;
 }
 
 void State::Swap(size_t lhs, size_t rhs) {
-  uint64_t src = (data_ & Masks[lhs]) >> (lhs * 4);
-  uint64_t dest = (data_ & Masks[rhs]) >> (rhs * 4);
+  uint64_t src = (data_ & k_masks[lhs]) >> (lhs * 4);
+  uint64_t dest = (data_ & k_masks[rhs]) >> (rhs * 4);
   SetTile(lhs, dest);
   SetTile(rhs, src);
 }
 
-void State::Print() {
+void State::Print() const {
   for (size_t i = 0; i < 3; ++i) {
     for (size_t j = 0; j < 3; ++j) {
       std::cout << GetTile(3 * i + j) << ' ';
@@ -177,34 +237,43 @@ void State::Print() {
   }
 }
 
-/*
-
-template <>
-struct std::hash<State> {
-  std::uint64_t operator()(State const& s) const noexcept {
-    auto hasher = std::hash<uint64_t>{};
-    uint64_t hash = hasher(s.Data());
-    return hash;
+bool CheckZeroAccessibility(std::vector<uint64_t>& board /*, State& state*/) {
+  size_t counter = 0;
+  // size_t zero_row = state.Zero() / 3 + 1;
+  for (size_t i = 0; i < board.size(); ++i) {
+    for (size_t j = 0; j < i; ++j) {
+      if (board[i] != 0 && board[i] < board[j]) {
+        ++counter;
+      }
+    }
   }
-};
-
-struct TileData {
-  size_t dist;
-  State state;
-  TileData(size_t new_dist, State new_state)
-      : dist(new_dist), state(new_state) {}
-  TileData& operator=(const TileData& rhs) {
-    dist = rhs.dist;
-    state = rhs.state;
-    return *this;
-  }
-};
-
-bool operator==(const TileData& lhs, const TileData& rhs) {
-  return lhs.dist == rhs.dist && lhs.state == rhs.state;
+  return (counter) % 2 == 0;
 }
 
-bool operator<(const TileData& lhs, const TileData& rhs) {
-  return lhs.dist < rhs.dist;
+int64_t ManhattanDistance(const State& state) {
+  int64_t distance = 0;
+  size_t tile;
+  int64_t position;
+  for (int64_t x = 0; x < 3; ++x) {
+    for (int64_t y = 0; y < 3; ++y) {
+      position = x * 3 + y;
+      tile = state.GetTile(position);
+      distance += ManhattanDistance(tile, position);
+    }
+  }
+  return distance;
 }
-*/
+
+int64_t ManhattanDistance(uint64_t tile, int64_t position) {
+  int64_t distance = 0;
+  if (tile != 0) {
+    --tile;
+    int64_t x_pos = tile / 3;
+    int64_t y_pos = tile % 3;
+    int64_t x = position / 3;
+    int64_t y = position % 3;
+    distance = std::max(x_pos, x) - std::min(x_pos, x) + std::max(y_pos, y) -
+               std::max(y_pos, y);
+  }
+  return distance;
+}
