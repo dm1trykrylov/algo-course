@@ -1,14 +1,18 @@
 in := input.txt
 out := output.txt
-task := taskJ
+task := taskI
 buildsan: $(task).cpp
 	g++ -Wall -Wextra -fdiagnostics-color=always $(task).cpp -o ./exec/$(task) -fsanitize=address -g
 
 build: $(task).cpp
 	g++ -Wall -Wextra -fdiagnostics-color=always $(task).cpp -o ./exec/$(task) -g
 
-run: ./$(task) $(in)
+br: $(task).cpp
+	g++ -Wall -Wextra -fdiagnostics-color=always $(task).cpp -o ./exec/$(task) -g
 	./exec/$(task) < $(in) 
+
+run: ./$(task) $(in)
+	
 
 runvg: ./$(task) $(in)
 	valgrind ./exec/$(task) < $(in) 
