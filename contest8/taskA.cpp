@@ -1,3 +1,4 @@
+// 83533486
 #include <algorithm>
 #include <iostream>
 #include <numeric>
@@ -21,30 +22,30 @@ class DSU {
     }
   }
 
-  bool IsSame(T u, T v) { return Find(u) == Find(v); }
+  bool IsSame(T lhs, T rhs) { return Find(lhs) == Find(rhs); }
 
-  T Find(T v) {  // find root
-    if (parent_[v] == v) return v;
-    parent_[v] = Find(parent_[v]);  // path compression heuristic
-    power_[v] = power_[parent_[v]];
-    return parent_[v];
+  T Find(T vertex) {  // find root
+    if (parent_[vertex] == vertex) {
+      return vertex;
+    }
+    parent_[vertex] = Find(parent_[vertex]);  // path compression heuristic
+    power_[vertex] = power_[parent_[vertex]];
+    return parent_[vertex];
   }
 
-  void AddPower(T v, P power) {
-    v = Find(v);
-    power_[v] += power;
+  void AddPower(T vertex, P power) {
+    vertex = Find(vertex);
+    power_[vertex] += power;
   }
 
-  P Power(T v) {
-    if (parent_[v] == v) return power_[v];
-    parent_[v] = Find(parent_[v]);  // path compression heuristic
-    power_[v] = power_[parent_[v]];
-    return power_[v];
+  P Power(T vertex) {
+    vertex = Find(vertex);
+    return power_[vertex];
   }
 
-  void Union(T u, T v) {
-    T root_u = Find(u);
-    T root_v = Find(v);
+  void Union(T lhs, T rhs) {
+    T root_u = Find(lhs);
+    T root_v = Find(rhs);
     if (root_u != root_v) {  // rank heuristic
       if (rank_[root_u] < rank_[root_v]) {
         std::swap(root_v, root_u);
@@ -72,30 +73,30 @@ class DSU<size_t, size_t> {
     }
   }
 
-  bool IsSame(size_t u, size_t v) { return Find(u) == Find(v); }
+  bool IsSame(size_t lhs, size_t rhs) { return Find(lhs) == Find(rhs); }
 
-  size_t Find(size_t v) {  // find root
-    if (parent_[v] == v) return v;
-    parent_[v] = Find(parent_[v]);  // path compression heuristic
-    power_[v] = power_[parent_[v]];
-    return parent_[v];
+  size_t Find(size_t vertex) {  // find root
+    if (parent_[vertex] == vertex) {
+      return vertex;
+    }
+    parent_[vertex] = Find(parent_[vertex]);  // path compression heuristic
+    power_[vertex] = power_[parent_[vertex]];
+    return parent_[vertex];
   }
 
-  void AddPower(size_t v, size_t power) {
-    v = Find(v);
-    power_[v] += power;
+  void AddPower(size_t vertex, size_t power) {
+    vertex = Find(vertex);
+    power_[vertex] += power;
   }
 
-  size_t Power(size_t v) {
-    if (parent_[v] == v) return power_[v];
-    parent_[v] = Find(parent_[v]);  // path compression heuristic
-    power_[v] = power_[parent_[v]];
-    return power_[v];
+  size_t Power(size_t vertex) {
+    vertex = Find(vertex);
+    return power_[vertex];
   }
 
-  void Union(size_t u, size_t v) {
-    size_t root_u = Find(u);
-    size_t root_v = Find(v);
+  void Union(size_t lhs, size_t rhs) {
+    size_t root_u = Find(lhs);
+    size_t root_v = Find(rhs);
     if (root_u != root_v) {  // rank heuristic
       if (rank_[root_u] < rank_[root_v]) {
         std::swap(root_v, root_u);
@@ -130,10 +131,7 @@ void inline FastIO() {
 }
 
 int main() {
-  std::ios::sync_with_stdio(false);
-  std::cin.tie(nullptr);
-  std::cout.tie(nullptr);
-
+  FastIO();
   size_t students;
   size_t queries;
   std::cin >> students >> queries;
