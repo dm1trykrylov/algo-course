@@ -5,14 +5,13 @@
 #include <unordered_map>
 #include <vector>
 
-template <typename T, typename P>
+template <typename T>
 class DSU {
  public:
   DSU(size_t n) {
     for (size_t i = 0; i < n; ++i) {
       parent_[i] = i;
       rank_[i] = 0;
-      power_[i] = 0;
     }
   }
   DSU(std::vector<T>& nodes) {
@@ -29,18 +28,7 @@ class DSU {
       return vertex;
     }
     parent_[vertex] = Find(parent_[vertex]);  // path compression heuristic
-    power_[vertex] = power_[parent_[vertex]];
     return parent_[vertex];
-  }
-
-  void AddPower(T vertex, P power) {
-    vertex = Find(vertex);
-    power_[vertex] += power;
-  }
-
-  P Power(T vertex) {
-    vertex = Find(vertex);
-    return power_[vertex];
   }
 
   void Union(T lhs, T rhs) {
@@ -51,7 +39,6 @@ class DSU {
         std::swap(root_v, root_u);
       }
       parent_[root_v] = root_u;
-      power_[root_u] += power_[root_v];
       if (rank_[root_u] == rank_[root_v]) {
         rank_[root_u] += 1;
       }
@@ -60,12 +47,11 @@ class DSU {
 
  private:
   std::unordered_map<T, T> parent_;
-  std::unordered_map<T, P> power_;
   std::unordered_map<T, size_t> rank_;
 };
 
 template <>
-class DSU<size_t, size_t> {
+class DSU<size_t> {
  public:
   DSU(size_t n) : parent_(n, 0), rank_(n, 0), power_(n, 0) {
     for (size_t i = 0; i < n; ++i) {
@@ -115,7 +101,7 @@ class DSU<size_t, size_t> {
   std::vector<size_t> power_;
 };
 
-void AddFriends(DSU<size_t, size_t>& dsu) {
+void AddFriends(DSU<size_t>& dsu) {
   size_t lhs;
   size_t rhs;
   size_t pair_power;
@@ -135,7 +121,7 @@ int main() {
   size_t students;
   size_t queries;
   std::cin >> students >> queries;
-  DSU<size_t, size_t> dsu(students + 1);
+  DSU<size_t> dsu(students + 1);
 
   char operation_type;
   size_t student;
