@@ -9,6 +9,10 @@ static constexpr size_t kSize = 4;
 static constexpr size_t kMaxPos = kSize * kSize;
 static constexpr size_t kOffset = 4;
 
+static constexpr int64_t kDistWeight = 1;
+static constexpr int64_t kMaxDepth = 60 * kDistWeight;
+static constexpr int64_t kManhattanWeight = 1;
+
 const static constexpr uint64_t k_anti_masks[] = {
     0xFFFFFFFFFFFFFFF0, 0xFFFFFFFFFFFFFF0F, 0xFFFFFFFFFFFFF0FF,
     0xFFFFFFFFFFFF0FFF, 0xFFFFFFFFFFF0FFFF, 0xFFFFFFFFFF0FFFFF,
@@ -94,6 +98,19 @@ int64_t LUcorner(State& state) {
   return incr;
 }
 
+int64_t RUcorner(State& state) {
+  int64_t incr = 0;
+  if (state.GetTile(kSize - 1) != 1) {
+    if (state.GetTile(kSize - 2) != kSize - 1) {
+      incr = 2;
+    }
+    if (state.GetTile(kSize * 2 - 1) != kSize * 2) {
+      incr = 2;
+    }
+  }
+  return incr;
+}
+
 int64_t LDcorner(State& state) {
   int64_t incr = 0;
   if (state.GetTile(kSize * (kSize - 1)) != kSize * (kSize - 1) + 1) {
@@ -123,11 +140,15 @@ class Dijkstra {
              char direction) {
     uint64_t to = to_state.Data();
     uint64_t from = from_state.Data();
-    if (distance_[to] == 0 && to != source.Data()) {
+    if (distance_[to] == 0 && to != source.Data() &&
+        distance_[from] < kMaxDepth) {
       distance_[to] = distance_[from] + 1;
-      queue_.push({distance_[to] + to_state.Manhattan() + LastMove(to_state) +
-                       LUcorner(to_state) + LDcorner(to_state),
-                   to_state});
+      queue_.push(
+          {distance_[to] * kDistWeight +
+               (to_state.Manhattan() + LastMove(to_state) + LUcorner(to_state) +
+                LDcorner(to_state) + RUcorner(to_state)) *
+                   kManhattanWeight,
+           to_state});
 
       // parents_[to] = {direction, from};
       parents_[to] = direction;
@@ -165,6 +186,9 @@ class Dijkstra {
       queue_.pop();
       if (from.Data() == target.Data()) {
         break;
+      }
+      if (distance_[from.Data()] >= kMaxDepth) {
+        continue;
       }
       zero_pos = from.Zero();
       if (zero_pos % kSize > 0) {  // move zero left
