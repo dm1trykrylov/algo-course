@@ -3,9 +3,9 @@
 #include <numeric>
 #include <vector>
 
-class DST {
+class DSU {
  public:
-  DST(size_t n) : parent_(n), rank_(n, 0) {
+  DSU(size_t n) : parent_(n), rank_(n, 0) {
     for (size_t i = 0; i < n; ++i) {
       parent_[i] = i;
     }
@@ -49,7 +49,7 @@ std::vector<Edge> MSTKruscal(size_t n, std::vector<Edge>& edges) {
     return e1.weight < e2.weight;
   });
 
-  DST dst_vertexes(n + 1);
+  DSU dst_vertexes(n + 1);
   std::vector<Edge> answer;
   answer.reserve(n - 1);
   size_t founded = 0;
