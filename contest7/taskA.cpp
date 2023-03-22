@@ -194,24 +194,24 @@ class UndirectedListGraph : public ListGraph<VType, EType> {
   }
 };
 
-/* Own hash! */
 template <>
 struct std::hash<std::pair<size_t, size_t>> {
-  std::size_t operator()(std::pair<size_t, size_t> const& s) const noexcept {
+  std::size_t operator()(std::pair<size_t, size_t> const& pair) const noexcept {
     auto hasher = std::hash<size_t>{};
-    size_t hash = hasher(s.first) + hasher(s.second);
+    size_t hash = hasher(pair.first) + hasher(pair.second);
     return hash;
   }
 };
 
-// класс абстрактной метрики
+// abstract metric
 template <typename T>
 class AbstractMetric {
  public:
-  virtual T operator()(size_t from, size_t to) noexcept = 0;
-  virtual void SetDist(size_t from, size_t to, T dist) = 0;
+  virtual T operator()(size_t from, size_t dest) noexcept = 0;
+  virtual void SetDist(size_t from, size_t dest, T distance) = 0;
 };
 
+// distance-based metric
 template <typename T>
 class DistMetric : public AbstractMetric<T> {
  private:
@@ -220,12 +220,12 @@ class DistMetric : public AbstractMetric<T> {
  public:
   DistMetric() {}
 
-  void SetDist(size_t from, size_t to, T dist) override {
-    dist_[{std::min(from, to), std::max(from, to)}] = dist;
+  void SetDist(size_t from, size_t dest, T distance) override {
+    dist_[{std::min(from, dest), std::max(from, dest)}] = distance;
   }
 
-  T operator()(size_t from, size_t to) noexcept override {
-    return dist_[{std::min(from, to), std::max(from, to)}];
+  T operator()(size_t from, size_t dest) noexcept override {
+    return dist_[{std::min(from, dest), std::max(from, dest)}];
   }
 };
 
@@ -240,6 +240,7 @@ class DijkstraVisitor {
   std::unordered_map<VType, VType> parents_;
 };
 
+// Dijkstra's algorithm
 template <class Graph, class Visitor, typename T>
 class Dijkstra {
  private:
@@ -262,15 +263,16 @@ class Dijkstra {
     std::priority_queue<std::pair<VType, T>, std::vector<std::pair<VType, T>>,
                         std::greater<std::pair<VType, T>>>
         queue;
-
     queue.emplace(distances_[from], from);
 
     while (!queue.empty()) {
-      auto[dist, current] = queue.top();
+      // get nearest vertex
+      auto [dist, current] = queue.top();
       queue.pop();
       if (dist > distances_[current]) {
         continue;
       }
+      // update distance for neighbours
       auto neighbours =
           graph_.NeighboursIt(current, [&](const EType&) { return true; });
       for (auto& edge : neighbours) {
@@ -293,7 +295,7 @@ template <class VType = size_t, class EType = std::pair<VType, VType>,
 void ReadGraph(std::vector<EType>& edges_list, std::vector<VType>& vertex_list,
                AbstractMetric<T>& metric) {
   T weight;
-  for (auto & [ from, to ] : edges_list) {
+  for (auto& [from, to] : edges_list) {
     std::cin >> from >> to >> weight;
     metric.SetDist(from, to, weight);
   }
@@ -333,9 +335,10 @@ void ReadGraphAndFindPath() {
   UndirectedListGraph<size_t> graph(vertex_list, edges_list);
   Dijkstra<UndirectedListGraph<size_t>, DijkstraVisitor<size_t>, size_t>
       dijkstra(graph, visitor);
-  dijkstra(source, 2009000999, dist);
-  for (auto v : graph.Vertexes()) {
-    std::cout << dijkstra.Distance(v) << ' ';
+  const size_t kMaxDistance = 2009000999;
+  dijkstra(source, kMaxDistance, dist);
+  for (auto vertex : graph.Vertexes()) {
+    std::cout << dijkstra.Distance(vertex) << ' ';
   }
 }
 
