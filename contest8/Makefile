@@ -1,6 +1,6 @@
 in := input.txt
 out := output.txt
-task := taskC
+task := taskI
 buildsan: $(task).cpp
 	g++ -Wall -Wextra -fdiagnostics-color=always $(task).cpp -o ./exec/$(task) -fsanitize=address -g
 
