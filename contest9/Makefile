@@ -1,6 +1,7 @@
 in := input.txt
 out := output.txt
-task := taskC
+task := taskF
+test := fwall
 buildsan: $(task).cpp
 	g++ -Wall -Wextra -fdiagnostics-color=always $(task).cpp -o ./exec/$(task) -fsanitize=address -g
 
@@ -24,6 +25,14 @@ vg: $(task).cpp $(in)
 san: $(task).cpp $(in)
 	g++ -Wall -Wextra -fdiagnostics-color=always -DDebug $(task).cpp -o ./exec/$(task) -fsanitize=address -g
 	./exec/$(task) < $(in) 
+
+schlang: $(task).cpp $(in)
+	clang++ -pedantic -Werror -Wextra -fsanitize=address -fsanitize=undefined -std=c++20 -DDebug $(task).cpp -o ./exec/$(task) -g
+	./exec/$(task) < $(in) 
+
+test: $(test).cpp $(in)
+	g++ -fdiagnostics-color=always -DDebug $(test).cpp -o ./exec/$(test) -fsanitize=address -g
+	./exec/$(test) < $(in) 
 
 clang: $(task).cpp
 	clang++ -Wall -Wextra -fdiagnostics-color=always $(task).cpp -o ./exec/$(task) -g
