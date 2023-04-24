@@ -14,43 +14,53 @@ void Print(std::vector<T>& data, char delim = '\n') {
 
 struct ModInt {
  private:
+  static constexpr size_t kHashRate = 2;
+  uint64_t numbers_[kHashRate];
   uint64_t number1_;
   uint64_t number2_;
-  static constexpr uint64_t kMod1 = 2000049943;
-  static constexpr uint64_t kMod2 = 0xFFFFFFFF;
+  static constexpr uint64_t kMods[] = {2000049943, 0xFFFFFFFF};
 
  public:
   ModInt() : ModInt(0) {}
-  ModInt(uint64_t number)
-      : number1_(number % kMod1), number2_(number % kMod2) {}
+  ModInt(uint64_t number) {
+    for (size_t i = 0; i < kHashRate; ++i) {
+      numbers_[i] = number % kMods[i];
+    }
+  }
+
+  void Mod(uint64_t& number, const uint64_t& mod) {
+    if (number > mod) {
+      number -= mod;
+    }
+  }
+
   ModInt& operator+=(ModInt other) {
-    number1_ += other.number1_;
-    number1_ %= kMod1;
-    number2_ += other.number2_;
-    number2_ %= kMod2;
+    for (size_t i = 0; i < kHashRate; ++i) {
+      numbers_[i] += other.numbers_[i];
+      if (numbers_[i] > kMods[i]) {
+        numbers_[i] -= kMods[i];
+      }
+    }
     return *this;
   }
 
   ModInt& operator-=(ModInt other) {
-    number1_ += kMod1;
-    number1_ -= other.number1_;
-    number1_ %= kMod1;
-    number2_ += kMod2;
-    number2_ -= other.number2_;
-    number2_ %= kMod2;
+    for (size_t i = 0; i < kHashRate; ++i) {
+      numbers_[i] += kMods[i];
+      numbers_[i] -= other.numbers_[i];
+      numbers_[i] %= kMods[i];
+    }
     return *this;
   }
   ModInt& operator*=(ModInt other) {
-    number1_ *= other.number1_;
-    number1_ %= kMod1;
-    number2_ *= other.number2_;
-    number2_ %= kMod2;
+    for (size_t i = 0; i < kHashRate; ++i) {
+      numbers_[i] *= other.numbers_[i];
+      numbers_[i] %= kMods[i];
+    }
     return *this;
   }
 
-  friend bool operator<(ModInt lhs, ModInt rhs);
-
-  std::pair<uint64_t, uint64_t> Int() { return {number1_, number2_}; }
+  std::pair<uint64_t, uint64_t> Int() { return {numbers_[0], numbers_[1]}; }
 };
 
 ModInt operator+(ModInt lhs, ModInt rhs) {
@@ -88,15 +98,9 @@ struct std::hash<std::pair<uint64_t, uint64_t>> {
     return std::hash<uintmax_t>{}(hash);
   }
 };
-/*
-struct hash_pair final {
-  template <class TFirst, class TSecond>
-  size_t operator()(const std::pair<TFirst, TSecond>& p) const noexcept {}
-};*/
 
 struct Hasher {
-  // static constexpr uint64_t base = 19;
-  static constexpr uint64_t base = 317;
+  static constexpr uint64_t base = 17;
   static ModInt StoI(char ch) {
     return ModInt(static_cast<uint64_t>(ch - 'a' + 1));
   }
