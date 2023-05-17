@@ -1,9 +1,8 @@
-// 87305639
+// 87092867
 #include <functional>
 #include <iostream>
 #include <limits>
 #include <numeric>
-#include <optional>
 #include <stack>
 #include <unordered_map>
 #include <vector>
@@ -115,17 +114,6 @@ class ListGraph : public Graph<VType, Edge*> {
     }
   }
 
-  void AddEdge(int64_t from, int64_t to_vertex, int64_t capacity) {
-    edges_.emplace_back(new Edge(from, to_vertex, capacity));
-    auto* edge = edges_.back();
-    edges_.emplace_back(new Edge(to_vertex, from, 0));  // back edge
-    auto* back_edge = edges_.back();
-    edge->back = back_edge;
-    back_edge->back = edge;
-    adjacency_lists_[from].push_back(edge);
-    adjacency_lists_[to_vertex].push_back(back_edge);
-  }
-
   size_t EdgeCount() const final { return num_edges_; }
 
   size_t VertexCount() const final { return num_vertex_; }
@@ -147,12 +135,6 @@ class ListGraph : public Graph<VType, Edge*> {
     return {vertex, NeighboursBegin(vertex), NeighboursEnd(vertex), filter};
   }
 
-  ~ListGraph() {
-    for (auto* edge : edges_) {
-      delete edge;
-    }
-  }
-
  protected:
   std::unordered_map<VType, std::vector<EType>> adjacency_lists_;
   std::vector<VType> vertexes_;
@@ -161,140 +143,52 @@ class ListGraph : public Graph<VType, Edge*> {
   size_t num_edges_;
 };
 
-template <class VType = size_t, class EType = std::pair<VType, VType>,
-          class T = int64_t>
-class Visitor {
- public:
-  using ValueType = T;
-  virtual void Initialize(const std::vector<VType>& vertices) = 0;
-  virtual std::optional<T> DiscoverVertex(VType& vertex) = 0;
-  virtual bool CheckEdge(const EType& edge) = 0;
-  virtual void TreeEdge(EType& edge) = 0;
-  virtual void BackEdge(EType& edge) = 0;
-  virtual bool FinishEdge(EType& edge) = 0;
-  virtual T FinishVertex(const VType& vertex) = 0;
-  virtual void Reset() = 0;
-  ~Visitor() = default;
-};
-
-template <class VType = int64_t, class T = int64_t>
-class IncreasingPathVisitor : public Visitor<VType, Edge*, T> {
- public:
-  using EType = Edge*;
-  IncreasingPathVisitor(VType source, VType target)
-      : source_(source), target_(target), min_flow_(0) {
-    flow_stack_.push(kInfinity);
-  }
-  void Initialize(const std::vector<VType>& vertices) final {
-    for (auto vertex : vertices) {
-      colors_[vertex] = White;
-    }
-    min_flow_ = 0;
-  }
-  std::optional<T> DiscoverVertex(VType& vertex) final {
-    if (vertex == target_) {
-      min_flow_ = flow_stack_.top();
-      return min_flow_;
-    }
-    colors_[vertex] = Grey;
-    return std::nullopt;
-  }
-  bool CheckEdge(const EType& edge) final {
-    return colors_[edge->second] == White && edge->CurrentCapacity() != 0;
-  }
-  T FinishVertex(const VType& vertex) final {
-    colors_[vertex] = Black;
-    return T(0);
-  }
-  void TreeEdge(EType& edge) final {
-    flow_stack_.push(std::min(flow_stack_.top(), edge->CurrentCapacity()));
-  }
-  void BackEdge(EType& edge) final { std::ignore = edge; }
-  bool FinishEdge(EType& edge) final {
-    T delta = min_flow_;
-    flow_stack_.pop();
-    if (delta > 0) {
-      edge->flow += delta;
-      edge->back->flow -= delta;  // back edge
-      return true;
-    }
-    return false;
-  }
-  void Reset() /*final*/ {
-    min_flow_ = 0;
-    while (!flow_stack_.empty()) {
-      flow_stack_.pop();
-    }
-    flow_stack_.push(kInfinity);
-  }
-  bool FoundIncreasingPath() { return min_flow_ > 0; }
-
- private:
-  VType source_;
-  VType target_;
-  T min_flow_;
-  std::stack<T> flow_stack_;
-  static constexpr T kInfinity = std::numeric_limits<T>::max();
-  enum Colors { White, Grey, Black };
-  using Color = char;
-  std::unordered_map<VType, Color> colors_;
-};
-
-// DFS with return value
-template <class Graph, class Visitor>
-class DFSImpl {
- private:
-  Graph& graph_;
-
-  enum Colors { White, Grey, Black };
-  using VType = typename Graph::VertexType;
-  using EType = typename Graph::EdgeType;
-  using Color = char;
-  std::unordered_map<VType, Color> colors_;
-  Visitor visitor_;
-
- public:
-  DFSImpl(Graph& graph, Visitor& visitor) : graph_(graph), visitor_(visitor) {
-    visitor_.Initialize(graph_.Vertices());
-  }
-
-  typename Visitor::ValueType DFS(typename Graph::VertexType from) {
-    auto result = visitor_.DiscoverVertex(from);
-    if (result.has_value()) {
-      return result.value();
-    }
-    auto neighbours = graph_.NeighboursIt(
-        from, [&](const EType& edge) { return visitor_.CheckEdge(edge); });
-    for (auto edge : neighbours) {
-      auto to_v = edge->second;
-      visitor_.TreeEdge(edge);
-      auto dfs_value = DFS(to_v);
-      // check result
-      if (visitor_.FinishEdge(edge)) {
-        return dfs_value;
-      }
-    };
-    return visitor_.FinishVertex(from);
-  }
-};
+void AddEdge(
+    /*std::vector<std::vector<int64_t>>& graph, */ std::vector<Edge*>& edges,
+    int64_t from, int64_t to_vertex, int64_t capacity) {
+  edges.emplace_back(new Edge(from, to_vertex, capacity));
+  auto* edge = edges.back();
+  edges.emplace_back(new Edge(to_vertex, from, 0));  // back edge
+  auto* back_edge = edges.back();
+  edge->back = back_edge;
+  back_edge->back = edge;
+}
 
 struct FordFulkerson {
  private:
   ListGraph<int64_t>& graph_;
+  static constexpr int64_t kInfinity = std::numeric_limits<int64_t>::max();
 
  public:
   FordFulkerson(ListGraph<int64_t>& graph) : graph_(graph) {}
 
+  int64_t FindIncreasingPath(std::vector<uint32_t>& used, uint32_t phase,
+                             int64_t vertex, int64_t destination, int64_t min) {
+    if (vertex == destination) {
+      return min;
+    }
+    used[vertex] = phase;
+    auto neighbours = graph_.NeighboursIt(vertex, [&](const Edge* edge) {
+      return used[edge->second] != phase && edge->CurrentCapacity() != 0;
+    });
+    for (auto* edge : neighbours) {
+      int64_t delta =
+          FindIncreasingPath(used, phase, edge->second, destination,
+                             std::min(min, edge->CurrentCapacity()));
+      if (delta > 0) {
+        edge->flow += delta;
+        edge->back->flow -= delta;  // back edge
+        return delta;
+      }
+    }
+    return 0;
+  }
+
   int64_t FindMaxFlow(int64_t source, int64_t target) {
     std::vector<uint32_t> used(graph_.VertexCount(), 0);
-    while (true) {
-      IncreasingPathVisitor<int64_t, int64_t> visitor(source, target);
-      DFSImpl<ListGraph<int64_t>, IncreasingPathVisitor<int64_t, int64_t>> dfs(
-          graph_, visitor);
-      auto delta = dfs.DFS(source);
-      if (delta == 0) {
-        break;
-      }
+    uint32_t phase = 1;
+    while (FindIncreasingPath(used, phase, source, target, kInfinity) > 0) {
+      ++phase;
     }
     int64_t result = 0;
     auto neighbours =
@@ -306,7 +200,7 @@ struct FordFulkerson {
   }
 };
 
-void ReadGraph(size_t edges_count, ListGraph<int64_t>& graph) {
+void ReadGraph(size_t edges_count, std::vector<Edge*>& edges) {
   for (size_t i = 0; i < edges_count; ++i) {
     int64_t from;
     int64_t to_v;
@@ -314,19 +208,19 @@ void ReadGraph(size_t edges_count, ListGraph<int64_t>& graph) {
     std::cin >> from >> to_v >> capacity;
     --from;
     --to_v;
-    graph.AddEdge(from, to_v, capacity);  // add edge and back edge
+    AddEdge(edges, from, to_v, capacity);  // add edge and back edge
   }
 }
 
 int main() {
+  std::vector<Edge*> edges;
   size_t vertices_count;
   size_t edges_count;
   std::cin >> vertices_count >> edges_count;
+  ReadGraph(edges_count, edges);
   std::vector<int64_t> vertices(vertices_count, 0);
-  std::vector<Edge*> edges;
   std::iota(vertices.begin(), vertices.end(), 1);
   ListGraph<int64_t> graph(vertices, edges);
-  ReadGraph(edges_count, graph);
   auto algo = FordFulkerson(graph);
   std::cout << algo.FindMaxFlow(0, vertices_count - 1) << std::endl;
   for (auto* edge : edges) {

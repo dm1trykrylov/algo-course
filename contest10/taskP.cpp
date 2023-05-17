@@ -98,7 +98,7 @@ ModInt<T> Pow(ModInt<T> number, size_t power) {
 struct RootStorage {
   const int64_t kMod = 998'244'353;                // 7 * 17 * 2 ^ 23 + 1
   const int64_t prime_root = 841'431'251;          // 31 ^ (2 ^ 5)
-  const int64_t inverse_prime_root = 667'573'957;  // prime_root ^ -1
+  const int64_t kInversePrimeRoot = 667'573'957;  // prime_root ^ -1
   static const size_t kMaxLen = (1 << 18);
   const int64_t kInv2 = 499'122'177;  // 2 ^ -1
   int64_t root_powers[kMaxLen + 1];
@@ -107,7 +107,7 @@ struct RootStorage {
   // precalc powers of prime_root
   inline RootStorage() {
     root_powers[kMaxLen] = prime_root;
-    inverse_root_povers[kMaxLen] = inverse_prime_root;
+    inverse_root_povers[kMaxLen] = kInversePrimeRoot;
     for (size_t i = kMaxLen / 2; i >= 1; i /= 2) {
       root_powers[i] = (root_powers[i * 2] * root_powers[i * 2]) % kMod;
       inverse_root_povers[i] =

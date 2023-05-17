@@ -1,3 +1,4 @@
+// 87095214
 #include <iostream>
 #include <map>
 #include <string>
@@ -6,8 +7,7 @@
 
 class Trie {
  public:
-  // static constexpr int32_t Null = -1;
-  static constexpr int32_t Null = 1e6 + 100;
+  static constexpr int32_t kNull = 1e6 + 100;
 
   struct Node {
     Node() = default;
@@ -18,7 +18,7 @@ class Trie {
     }
 
     std::unordered_map<char, int32_t> children;
-    int32_t parent{Null};
+    int32_t parent{kNull};
     char symbol{};
     bool is_terminal{false};
   };
@@ -51,12 +51,12 @@ class AhoKorasikAutomaton {
   AhoKorasikAutomaton(const std::vector<std::string>& patterns)
       : patterns_(patterns) {
     pattern_mapper_.resize(kMaxIdx, 0);
-    int32_t i = 0;
+    int32_t counter = 0;
     for (auto pattern : patterns) {
-      pattern_mapper_[trie_.Add(pattern)] = i++;
+      pattern_mapper_[trie_.Add(pattern)] = counter++;
     }
-    suffix_links_.assign(trie_.NodeCount(), Trie::Null);
-    terminal_links_.assign(trie_.NodeCount(), Trie::Null);
+    suffix_links_.assign(trie_.NodeCount(), Trie::kNull);
+    terminal_links_.assign(trie_.NodeCount(), Trie::kNull);
   }
 
   std::vector<std::string> MakeStep(char symbol) {
@@ -70,21 +70,21 @@ class AhoKorasikAutomaton {
   static constexpr size_t kMaxIdx = 2e6;
   std::vector<std::string> ExtractMatches() {
     std::vector<std::string> ans;
-    size_t v = state_;
-    while (v != 0) {
-      auto& node = trie_.Get(v);
+    size_t trie_node = state_;
+    while (trie_node != 0) {
+      auto& node = trie_.Get(trie_node);
       if (node.is_terminal) {
-        ans.push_back(patterns_[pattern_mapper_[v]]);
+        ans.push_back(patterns_[pattern_mapper_[trie_node]]);
       }
-      v = GetTerminalLink(v);
+      trie_node = GetTerminalLink(trie_node);
     }
     return ans;
   }
 
   int32_t CalcStep(int32_t node, char symbol) {
-    auto& v = trie_.Get(node);
-    if (v.HasChild(symbol)) {
-      return v.children[symbol];
+    auto& trie_node = trie_.Get(node);
+    if (trie_node.HasChild(symbol)) {
+      return trie_node.children[symbol];
     }
     if (node == 0) {
       return 0;
@@ -93,35 +93,36 @@ class AhoKorasikAutomaton {
   }
 
   int32_t GetTerminalLink(int32_t node) {
-    if (terminal_links_[node] != Trie::Null) {
+    if (terminal_links_[node] != Trie::kNull) {
       return terminal_links_[node];
     }
     if (node == 0 || trie_.Get(node).parent == 0) {
       terminal_links_[node] = 0;
       return 0;
     }
-    int32_t v = GetSuffixLink(node);
-    while (v != 0 && !trie_.Get(v).is_terminal) {
-      if (terminal_links_[v] != Trie::Null) {
-        v = terminal_links_[v];
+    int32_t trie_node = GetSuffixLink(node);
+    while (trie_node != 0 && !trie_.Get(trie_node).is_terminal) {
+      if (terminal_links_[trie_node] != Trie::kNull) {
+        trie_node = terminal_links_[trie_node];
       } else {
-        v = GetSuffixLink(v);
+        trie_node = GetSuffixLink(trie_node);
       }
     }
-    terminal_links_[node] = v;
-    return v;
+    terminal_links_[node] = trie_node;
+    return trie_node;
   }
 
   int32_t GetSuffixLink(int32_t node) {
-    if (suffix_links_[node] != Trie::Null) {
+    if (suffix_links_[node] != Trie::kNull) {
       return suffix_links_[node];
     }
     if (node == 0 || trie_.Get(node).parent == 0) {
       suffix_links_[node] = 0;
       return 0;
     }
-    auto& v = trie_.Get(node);
-    suffix_links_[node] = CalcStep(GetSuffixLink(v.parent), v.symbol);
+    auto& trie_node = trie_.Get(node);
+    suffix_links_[node] =
+        CalcStep(GetSuffixLink(trie_node.parent), trie_node.symbol);
     return suffix_links_[node];
   }
 
