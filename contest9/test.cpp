@@ -318,6 +318,12 @@ void ReadGraph(size_t edges_count, ListGraph<int64_t>& graph) {
   }
 }
 
+class Network : public ListGraph<int64_t> {
+ public:
+  Network(const std::vector<int64_t>& vertexes, const std::vector<Edge*>& edges)
+      : ListGraph<int64_t>(vertexes, edges) {}
+};
+
 int main() {
   size_t vertices_count;
   size_t edges_count;
@@ -326,11 +332,19 @@ int main() {
   std::vector<Edge*> edges;
   std::iota(vertices.begin(), vertices.end(), 1);
   ListGraph<int64_t> graph(vertices, edges);
+  
   ReadGraph(edges_count, graph);
+  Network net(vertices, edges);
+  auto nbr = net.NeighboursIt(0, [](const Edge* edge){return true;});
+  for (auto e : nbr) {
+    std::cout << e->second;
+  }
+  std::cout << net.Vertices()[0];
   auto algo = FordFulkerson(graph);
   std::cout << algo.FindMaxFlow(0, vertices_count - 1) << std::endl;
   for (auto* edge : edges) {
     delete edge;
   }
+  
   return 0;
 }

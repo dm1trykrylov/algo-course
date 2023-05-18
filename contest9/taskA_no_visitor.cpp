@@ -105,7 +105,7 @@ class ListGraph : public Graph<VType, Edge*> {
  public:
   using EType = Edge*;
   ListGraph(const std::vector<VType>& vertexes, const std::vector<EType>& edges)
-      : vertexes_(vertexes),
+      : vertices_(vertexes),
         edges_(edges),
         num_vertex_(vertexes.size()),
         num_edges_(edges.size()) {
@@ -126,7 +126,7 @@ class ListGraph : public Graph<VType, Edge*> {
     return adjacency_lists_[vertex].end();
   }
 
-  std::vector<VType> Vertices() const final { return vertexes_; }
+  std::vector<VType> Vertices() const final { return vertices_; }
 
   std::vector<EType> Edges() const { return edges_; }
 
@@ -137,7 +137,7 @@ class ListGraph : public Graph<VType, Edge*> {
 
  protected:
   std::unordered_map<VType, std::vector<EType>> adjacency_lists_;
-  std::vector<VType> vertexes_;
+  std::vector<VType> vertices_;
   std::vector<EType> edges_;
   size_t num_vertex_;
   size_t num_edges_;
