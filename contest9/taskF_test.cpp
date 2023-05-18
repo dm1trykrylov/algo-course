@@ -559,8 +559,8 @@ void WalkInResidualNetwork(ListGraph<int64_t>& net, size_t vertex,
 
 void Solve(ListGraph<int64_t>& net, std::pair<size_t, size_t> st_pair,
            Encoder& enc) {
-  FordFulkerson ff(net);
-  auto flow = ff.FindMaxFlow(st_pair.first, st_pair.second);
+  FordFulkerson ff_algo(net);
+  auto flow = ff_algo.FindMaxFlow(st_pair.first, st_pair.second);
   if (flow >= NetworkBuilder::kMaxFlow / 2) {
     std::cout << -1;
     return;
